@@ -1,8 +1,3 @@
-    SQLite store formula-aware implementation.  It stores it's triples in the following partitions:
+ZOPE Object Database implementation of rdflib.store.Store.
 
-    - Asserted non rdf:type statements
-    - Asserted rdf:type statements (in a table which models Class membership)
-    The motivation for this partition is primarily query speed and scalability as most graphs will always have more rdf:type statements than others
-    - All Quoted statements
-
-    In addition it persists namespace mappings in a seperate table
+The boilerplate ZODB/ZEO handling has been wrapped up in a utility class, ZODBGraph
