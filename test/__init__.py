@@ -7,5 +7,5 @@ sys.path.insert(0, '/var/lib/tomcat6/webapps/hudson/jobs/rdfextras')
 # Support execution of nosetests without actual installation
 plugin.register(
         'ZODB', store.Store,
-        'rdfextras.store.ZODB', 'ZODBGraph')
+        'rdflib_zodb.ZODB', 'ZODBGraph')
 
