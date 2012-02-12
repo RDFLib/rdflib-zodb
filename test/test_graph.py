@@ -8,7 +8,7 @@ from rdflib import URIRef
 # import rdflib.plugin
 
 class GraphTestCase(unittest.TestCase):
-    store_name = 'default'
+    store_name = 'ZODB'
     path = None
     storetest = True
     create = True
