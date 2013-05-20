@@ -7,11 +7,12 @@ from rdflib import Graph
 from rdflib import URIRef
 # logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
 
+
 class ContextTestCase(unittest.TestCase):
     store_name = "ZODB"
     storetest = True
     path = '/tmp/zodb_local3.fs'
-    url='file:///tmp/zodb_local3.fs'
+    url = 'file:///tmp/zodb_local3.fs'
     storetest = True
     create = True
     michel = URIRef(u'michel')
@@ -29,9 +30,9 @@ class ContextTestCase(unittest.TestCase):
         self.graph.destroy(self.path)
         if isinstance(self.path, type(None)):
             if self.store_name == "SQLite":
-                self.path = mkstemp(prefix='test',dir='/tmp')
+                self.path = mkstemp(prefix='test', dir='/tmp')
             else:
-                self.path = mkdtemp(prefix='test',dir='/tmp')
+                self.path = mkdtemp(prefix='test', dir='/tmp')
         self.graph.open(self.path, create=self.create)
 
     def tearDown(self):
@@ -41,21 +42,23 @@ class ContextTestCase(unittest.TestCase):
         except:
             pass
         import os
-        # if hasattr(self,'path') and self.path is not None:
-        #     if os.path.exists(self.path):
-        #         if os.path.isdir(self.path):
-        #             for f in os.listdir(self.path): os.unlink(self.path+'/'+f)
-        #             os.rmdir(self.path)
-        #         elif len(self.path.split(':')) == 1:
-        #             os.unlink(self.path)
-        #         else:
-        #             os.remove(self.path)
+        if hasattr(self, 'path') and self.path is not None:
+            if os.path.exists(self.path):
+                if os.path.isdir(self.path):
+                    for f in os.listdir(self.path):
+                        os.unlink(self.path + '/' + f)
+                    os.rmdir(self.path)
+                elif len(self.path.split(':')) == 1:
+                    os.unlink(self.path)
+                else:
+                    os.remove(self.path)
 
     def get_context(self, identifier):
         assert isinstance(identifier, URIRef) or \
-               isinstance(identifier, BNode), type(identifier)
+            isinstance(identifier, BNode), type(identifier)
         return Graph(store=self.graph.store, identifier=identifier,
-                         namespace_manager=self)
+                     namespace_manager=self)
+
     def addStuff(self):
         tarek = self.tarek
         michel = self.michel
@@ -73,7 +76,7 @@ class ContextTestCase(unittest.TestCase):
         graph.add((michel, likes, cheese))
         graph.add((bob, likes, cheese))
         graph.add((bob, hates, pizza))
-        graph.add((bob, hates, michel)) # gasp!
+        graph.add((bob, hates, michel))  # gasp!
 
     def removeStuff(self):
         tarek = self.tarek
@@ -92,12 +95,12 @@ class ContextTestCase(unittest.TestCase):
         graph.remove((michel, likes, cheese))
         graph.remove((bob, likes, cheese))
         graph.remove((bob, hates, pizza))
-        graph.remove((bob, hates, michel)) # gasp!
+        graph.remove((bob, hates, michel))  # gasp!
 
     def addStuffInMultipleContexts(self):
         c1 = self.c1
         c2 = self.c2
-        triple = (self.pizza, self.hates, self.tarek) # revenge!
+        triple = (self.pizza, self.hates, self.tarek)  # revenge!
 
         # add to default context
         self.graph.add(triple)
@@ -145,7 +148,7 @@ class ContextTestCase(unittest.TestCase):
 
         # addStuffInMultipleContexts is adding the same triple to
         # three different contexts. So it's only + 1
-        self.assertEquals(len(self.graph), oldLen + 1) 
+        self.assertEquals(len(self.graph), oldLen + 1)
 
         graph = Graph(self.graph.store, self.c1)
         self.assertEquals(len(graph), oldLen + 1)
@@ -153,7 +156,7 @@ class ContextTestCase(unittest.TestCase):
     def testRemoveInMultipleContexts(self):
         c1 = self.c1
         c2 = self.c2
-        triple = (self.pizza, self.hates, self.tarek) # revenge!
+        triple = (self.pizza, self.hates, self.tarek)  # revenge!
 
         self.addStuffInMultipleContexts()
 
@@ -175,9 +178,10 @@ class ContextTestCase(unittest.TestCase):
         self.assert_(triple not in self.graph)
 
     def testContexts(self):
-        triple = (self.pizza, self.hates, self.tarek) # revenge!
+        triple = (self.pizza, self.hates, self.tarek)  # revenge!
 
         self.addStuffInMultipleContexts()
+
         def cid(c):
             if not isinstance(c, basestring):
                 return c.identifier
@@ -311,18 +315,26 @@ class ContextTestCase(unittest.TestCase):
             asserte(set(c.predicates(bob, pizza)), set([hates]))
             asserte(set(c.predicates(bob, michel)), set([hates]))
 
-            asserte(set(c.subject_objects(hates)), set([(bob, pizza), (bob, michel)]))
-            asserte(set(c.subject_objects(likes)), set([(tarek, cheese), (michel, cheese), (michel, pizza), (bob, cheese), (tarek, pizza)]))
+            asserte(set(c.subject_objects(hates)), set(
+                [(bob, pizza), (bob, michel)]))
+            asserte(set(c.subject_objects(likes)), set([(tarek, cheese), (
+                michel, cheese), (michel, pizza), (bob, cheese), (tarek, pizza)]))
 
-            asserte(set(c.predicate_objects(michel)), set([(likes, cheese), (likes, pizza)]))
-            asserte(set(c.predicate_objects(bob)), set([(likes, cheese), (hates, pizza), (hates, michel)]))
-            asserte(set(c.predicate_objects(tarek)), set([(likes, cheese), (likes, pizza)]))
+            asserte(set(c.predicate_objects(michel)), set(
+                [(likes, cheese), (likes, pizza)]))
+            asserte(set(c.predicate_objects(bob)), set([(
+                likes, cheese), (hates, pizza), (hates, michel)]))
+            asserte(set(c.predicate_objects(tarek)), set(
+                [(likes, cheese), (likes, pizza)]))
 
-            asserte(set(c.subject_predicates(pizza)), set([(bob, hates), (tarek, likes), (michel, likes)]))
-            asserte(set(c.subject_predicates(cheese)), set([(bob, likes), (tarek, likes), (michel, likes)]))
+            asserte(set(c.subject_predicates(pizza)), set([(
+                bob, hates), (tarek, likes), (michel, likes)]))
+            asserte(set(c.subject_predicates(cheese)), set(
+                [(bob, likes), (tarek, likes), (michel, likes)]))
             asserte(set(c.subject_predicates(michel)), set([(bob, hates)]))
 
-            asserte(set(c), set([(bob, hates, michel), (bob, likes, cheese), (tarek, likes, pizza), (michel, likes, pizza), (michel, likes, cheese), (bob, hates, pizza), (tarek, likes, cheese)]))
+            asserte(set(c), set([(bob, hates, michel), (bob, likes, cheese), (tarek, likes, pizza), (
+                michel, likes, pizza), (michel, likes, cheese), (bob, hates, pizza), (tarek, likes, cheese)]))
 
         # remove stuff and make sure the graph is empty again
         self.removeStuff()
