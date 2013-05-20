@@ -2,6 +2,11 @@
 # -*- coding: utf-8 -*-
 import sys
 import re
+try:
+    import multiprocessing
+    assert multiprocessing
+except:
+    pass
 
 def setup_python3():
     # Taken from "distribute" setup.py
@@ -59,7 +64,6 @@ config = dict(
     """,
     classifiers = ["Programming Language :: Python",
                    "Programming Language :: Python :: 2",
-                   "Programming Language :: Python :: 2.4",
                    "Programming Language :: Python :: 2.5",
                    "Programming Language :: Python :: 2.6",
                    "Programming Language :: Python :: 2.7",
@@ -70,7 +74,7 @@ config = dict(
                    ],
     packages = ["rdflib_zodb"],
     test_suite = "test",
-    install_requires = ["rdflib>=3.0", "rdfextras>=0.1", "Persistence"],
+    install_requires = ["rdflib>=3.0", "Persistence"],
     entry_points = {
         'rdf.plugins.store': [
             'ZODB = rdflib_zodb.ZODB:ZODBGraph',
