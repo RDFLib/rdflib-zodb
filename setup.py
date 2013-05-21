@@ -64,9 +64,11 @@ config = dict(
     """,
     classifiers = ["Programming Language :: Python",
                    "Programming Language :: Python :: 2",
-                   "Programming Language :: Python :: 2.5",
                    "Programming Language :: Python :: 2.6",
                    "Programming Language :: Python :: 2.7",
+                   'Programming Language :: Python :: 3',
+                   'Programming Language :: Python :: 3.2',
+                   'Programming Language :: Python :: 3.3',
                    "License :: OSI Approved :: BSD License",
                    "Topic :: Software Development :: Libraries :: Python Modules",
                    "Operating System :: OS Independent",
@@ -74,7 +76,7 @@ config = dict(
                    ],
     packages = ["rdflib_zodb"],
     test_suite = "test",
-    install_requires = ["rdflib>=3.0", "Persistence"],
+    install_requires = ["rdflib>=4.0", "BTrees"],
     entry_points = {
         'rdf.plugins.store': [
             'ZODB = rdflib_zodb.ZODB:ZODBGraph',
@@ -86,12 +88,11 @@ if sys.version_info[0] >= 3:
     from setuptools import setup
     config.update({'use_2to3': True})
     config.update({'src_root': setup_python3()})
-else:
-    try:
-        from setuptools import setup
-        config.update({'test_suite' : "nose.collector"})
-    except ImportError:
-        from distutils.core import setup
+try:
+    from setuptools import setup
+    config.update({'test_suite' : "nose.collector"})
+except ImportError:
+    from distutils.core import setup
 
 
 setup(**config)
