@@ -8,6 +8,8 @@ branches:
 python:
     - 2.6
     - 2.7
+    - 3.2
+    - 3.3
 install:
     - pip install --use-mirrors --default-timeout 60 -r requirements.txt
     - python setup.py install
