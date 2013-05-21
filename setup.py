@@ -2,6 +2,11 @@
 # -*- coding: utf-8 -*-
 import sys
 import re
+try:
+    import multiprocessing
+    assert multiprocessing
+except:
+    pass
 
 def setup_python3():
     # Taken from "distribute" setup.py

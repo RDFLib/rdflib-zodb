@@ -3,14 +3,13 @@
 Any = None
 
 from rdflib.plugins.memory import IOMemory
-# you must export your PYTHONPATH to point to a Z2.8 or Z3+ installation to 
-# get this to work!, like: export PYTHONPATH="/home/michel/dev/Zope3Trunk/src"
 
 from persistent import Persistent
 
 from BTrees.IOBTree import IOBTree
 from BTrees.OIBTree import OIBTree
 from BTrees.OOBTree import OOBTree, OOTreeSet
+
 
 class ZODBGraph(Persistent, IOMemory):
 

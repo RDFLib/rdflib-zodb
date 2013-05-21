@@ -11,11 +11,11 @@ _logger = logging.getLogger(__name__)
 import os
 import transaction
 from rdflib import RDF, URIRef, BNode, ConjunctiveGraph, Graph
-import test_graph
-import test_context
+import graph_case
+import context_case
 from rdflib.graph import GraphValue
 
-class ZODBGraphTestCase(test_graph.GraphTestCase):
+class ZODBGraphTestCase(graph_case.GraphTestCase):
     store_name = "ZODB"
     storetest = True
     path = '/tmp/zodb_local2.fs'
@@ -198,7 +198,7 @@ class ZODBGraphTestCase(test_graph.GraphTestCase):
         graph.remove((gv1, RDF.value, gv2))
         # print(len(graph))
     
-class ZODBContextTestCase(test_context.ContextTestCase):
+class ZODBContextTestCase(context_case.ContextTestCase):
     store_name = "ZODB"
     storetest = True
     path = '/tmp/zodb_local3.fs'
