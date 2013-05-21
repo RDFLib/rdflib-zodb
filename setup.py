@@ -70,7 +70,7 @@ config = dict(
                    ],
     packages = ["rdflib_zodb"],
     test_suite = "test",
-    install_requires = ["rdflib>=3.0", "rdfextras>=0.1", "Persistence"],
+    install_requires = ["rdflib>=4.0", "BTrees"],
     entry_points = {
         'rdf.plugins.store': [
             'ZODB = rdflib_zodb.ZODB:ZODBGraph',
