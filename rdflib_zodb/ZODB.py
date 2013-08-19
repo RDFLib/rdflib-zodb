@@ -14,7 +14,7 @@ import BTrees
 # from BTrees.OO import intersection
 # from functools import reduce
 
-DEFAULT = BNode(u'ZODBGraph:DEFAULT')
+DEFAULT = BNode(u'ZODBStore:DEFAULT')
 
 # TODO:
 #   * is zope.intids id search faster? (maybe with large dataset and actual
@@ -23,7 +23,7 @@ DEFAULT = BNode(u'ZODBGraph:DEFAULT')
 #   * compare against BDB with disk access
 
 
-class ZODBGraph(Persistent, Store):
+class ZODBStore(Persistent, Store):
 
     context_aware = True
     formula_aware = True
@@ -32,7 +32,7 @@ class ZODBGraph(Persistent, Store):
     family = BTrees.family32
 
     def __init__(self, configuration=None, identifier=None, family=None):
-        super(ZODBGraph, self).__init__(configuration, identifier)
+        super(ZODBStore, self).__init__(configuration, identifier)
         if family is not None:
             self.family = family
         self.__namespace = self.family.OO.BTree()
