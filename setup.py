@@ -90,7 +90,6 @@ if sys.version_info[0] >= 3:
     config.update({'src_root': setup_python3()})
 try:
     from setuptools import setup
-    config.update({'test_suite' : "nose.collector"})
 except ImportError:
     from distutils.core import setup
 
