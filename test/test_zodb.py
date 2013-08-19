@@ -1,15 +1,14 @@
 try:
     import ZODB
+    import transaction
 except ImportError:
-    from nose.exc import SkipTest
-    raise SkipTest("ZODB not installed")
+    ZODB = False
 
 import logging
 
 _logger = logging.getLogger(__name__)
 
 import os
-import transaction
 from rdflib import RDF, URIRef, BNode, ConjunctiveGraph, Graph
 import graph_case
 import context_case
@@ -20,29 +19,34 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
     storetest = True
     path = '/tmp/zodb_local2.fs'
     url='file:///tmp/zodb_local2.fs'
-    
-    def setUp(self):
-        if self.url.endswith('.fs'): 
-            from ZODB.FileStorage import FileStorage
-            if os.path.exists(self.path):
-                os.unlink('/tmp/zodb_local2.fs')
-                os.unlink('/tmp/zodb_local2.fs.index')
-                os.unlink('/tmp/zodb_local2.fs.tmp')
-                os.unlink('/tmp/zodb_local2.fs.lock')
-            openstr = os.path.abspath(os.path.expanduser(self.url[7:])) 
-            fs = FileStorage(openstr) 
-        else: 
-            from ZEO.ClientStorage import ClientStorage 
-            schema, opts = _parse_rfc1738_args(self.url) 
-            fs = ClientStorage((opts['host'], int(opts['port']))) 
-        zdb=ZODB.DB(fs) 
-        conn=zdb.open() 
-        root=conn.root() 
+    conn = None
+
+    def initConnection(self, clear=True):
+        if not(self.conn and self.conn.opened):
+            if self.url.endswith('.fs'): 
+                from ZODB.FileStorage import FileStorage
+                if clear and os.path.exists(self.path):
+                    os.unlink('/tmp/zodb_local2.fs')
+                    os.unlink('/tmp/zodb_local2.fs.index')
+                    os.unlink('/tmp/zodb_local2.fs.tmp')
+                    os.unlink('/tmp/zodb_local2.fs.lock')
+                openstr = os.path.abspath(os.path.expanduser(self.url[7:])) 
+                fs = FileStorage(openstr) 
+            else: 
+                from ZEO.ClientStorage import ClientStorage 
+                schema, opts = _parse_rfc1738_args(self.url) 
+                fs = ClientStorage((opts['host'], int(opts['port']))) 
+            self.zdb=ZODB.DB(fs) 
+            self.conn=self.zdb.open()
+        root=self.conn.root() 
         if 'rdflib' not in root: 
             root['rdflib'] = ConjunctiveGraph(self.store_name)
-        root['rdflib'].zdb = zdb
         self.graph = self.g = root['rdflib']
-        
+        transaction.commit()
+    
+    def setUp(self):
+        # TODO: use DemoStorage for testing
+        self.initConnection()
         self.michel = URIRef(u'michel')
         self.tarek = URIRef(u'tarek')
         self.bob = URIRef(u'bob')
@@ -50,10 +54,19 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
         self.hates = URIRef(u'hates')
         self.pizza = URIRef(u'pizza')
         self.cheese = URIRef(u'cheese')
-        transaction.commit()
+        transaction.begin()
     
     def tearDown(self):
         self.graph.close()
+        try:
+            transaction.commit()
+        except Exception as e:
+            # catch commit exception and close db.
+            # otherwise db would stay open and follow up tests
+            # will detect the db in error state
+            transaction.abort()
+        self.conn.close()
+        self.zdb.close()
         os.unlink('/tmp/zodb_local2.fs')
         os.unlink('/tmp/zodb_local2.fs.index')
         os.unlink('/tmp/zodb_local2.fs.tmp')
@@ -166,7 +179,12 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
     
     def testGraphValue(self):
         pass
-    
+   
+    #  GraphZValues don't work with current store implementation, they keep a reference to the store (this instance)
+    #  and the pickler does not know how to pickle the store. (or something like that)
+    #  The problem in this case here is, that the underlying store does not clean up completely. It still keeps
+    #  references to the GraphValues in _all_contexts, _obj2int and _int2obj even after all other references have been
+    #  removed
     def testZGraphValue(self):
         
         graph = self.graph
@@ -185,10 +203,15 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
         g2.add((bob, RDF.value, pizza))
         g2.add((bob, RDF.value, cheese))
         g2.add((alice, RDF.value, pizza))
-        
         gv1 = GraphValue(store=graph.store, graph=g1)
         gv2 = GraphValue(store=graph.store, graph=g2)
         graph.add((gv1, RDF.value, gv2))
+        transaction.commit()
+        self.conn.close()
+        self.zdb.close()
+        self.initConnection(False)
+        graph = self.graph
+        gv1 = GraphValue(store=graph.store, identifier=gv1.identifier)
         v = graph.value(gv1)
         # print type(v)
         self.assertEquals(gv2, v)
@@ -218,12 +241,11 @@ class ZODBContextTestCase(context_case.ContextTestCase):
             from ZEO.ClientStorage import ClientStorage 
             schema, opts = _parse_rfc1738_args(self.url) 
             fs=ClientStorage((opts['host'],int(opts['port']))) 
-        zdb=ZODB.DB(fs) 
-        conn=zdb.open() 
-        root=conn.root() 
+        self.zdb=ZODB.DB(fs) 
+        self.conn=self.zdb.open() 
+        root=self.conn.root() 
         if 'rdflib' not in root: 
             root['rdflib'] = ConjunctiveGraph(self.store_name)
-        root['rdflib'].zdb = zdb
         self.graph = self.g = root['rdflib']
         
         self.michel = URIRef(u'michel')
@@ -237,6 +259,9 @@ class ZODBContextTestCase(context_case.ContextTestCase):
     
     def tearDown(self):
         self.graph.close()
+        transaction.commit()
+        self.conn.close()
+        self.zdb.close()
         os.unlink('/tmp/zodb_local3.fs')
         os.unlink('/tmp/zodb_local3.fs.index')
         os.unlink('/tmp/zodb_local3.fs.tmp')
@@ -522,3 +547,12 @@ class ZODBContextTestCase(context_case.ContextTestCase):
         asserte(len(list(c1triples((Any, Any, Any)))), 0)
         asserte(len(list(triples((Any, Any, Any)))), 0)
 
+def load_tests(loader, tests, pattern):
+    from unittest import TestSuite, TestLoader
+    if not ZODB:
+        from unittest import SkipTest
+        raise SkipTest("ZODB not installed")
+    suite = TestSuite()
+    suite.addTests(TestLoader().loadTestsFromTestCase(ZODBGraphTestCase))
+    suite.addTests(TestLoader().loadTestsFromTestCase(ZODBContextTestCase))
+    return suite
