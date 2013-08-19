@@ -6,16 +6,17 @@ branches:
     - master
 
 python:
-    - 2.6
     - 2.7
-    - 3.2
-    - 3.3
-install:
-    - pip install --use-mirrors --default-timeout 60 -r requirements.txt
-    - python setup.py install
 
-before_script:
-    - flake8 --exit-zero rdflib_zodb
+env:
+  - TOX_ENV=py26
+  - TOX_ENV=py27
+  - TOX_ENV=py32
+  - TOX_ENV=py33
+  - TOX_ENV=flake
+
+install:
+    - pip install --use-mirrors --default-timeout 60 tox
 
 script:
-    - nosetests
+    - tox -e $TOX_ENV
