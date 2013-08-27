@@ -29,7 +29,6 @@ class StoreTestCase(unittest.TestCase):
         self.gcold = gc.isenabled()
         gc.collect()
         gc.disable()
-
         self.graph = Graph(store=self.store)
         if not self.path:
             path = mkdtemp()
@@ -59,13 +58,32 @@ class StoreTestCase(unittest.TestCase):
 
     def testTime(self):
         # number = 1
-        print('"%s": [' % self.store)
+        print('"Load %s": [' % self.store)
         for i in ['500triples', '1ktriples', '2ktriples',
                   '3ktriples', '5ktriples', '10ktriples',
                   '25ktriples']:
             inputloc = os.getcwd() + '/test/sp2b/%s.n3' % i
+            # cleanup graph's so that BNodes in input data
+            # won't create random results
+            self.input = Graph()
+            self.graph.remove((None, None, None))
             res = self._testInput(inputloc)
-            print("%s," % res.strip())
+            print "Loaded %5d triples in %ss" % (len(self.graph), res.strip())
+        print("],")
+        print('"Read %s": [' % self.store)
+        t0 = time()
+        for _i in self.graph.triples((None, None, None)):
+            pass
+        self.assertEqual(len(self.graph), 25161)
+        t1 = time()
+        print "%.3gs" % (t1 - t0)
+        print("],")
+        print('"Delete %s": [' % self.store)
+        t0 = time()
+        self.graph.remove((None, None, None))
+        self.assertEqual(len(self.graph), 0)
+        t1 = time()
+        print "%.3g " % (t1 - t0)
         print("],")
 
     def _testInput(self, inputloc):

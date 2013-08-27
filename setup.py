@@ -13,7 +13,7 @@ def setup_python3():
     from distutils.filelist import FileList
     from distutils import dir_util, file_util, util, log
     from os.path import join
-  
+
     tmp_src = join("build", "src")
     log.set_verbosity(1)
     fl = FileList()
@@ -27,9 +27,9 @@ def setup_python3():
         outf, copied = file_util.copy_file(f, join(tmp_src, f), update=1)
         if copied and outf.endswith(".py"):
             outfiles_2to3.append(outf)
-  
+
     util.run_2to3(outfiles_2to3)
-  
+
     # arrange setup to use the copy
     sys.path.insert(0, tmp_src)
 
@@ -60,7 +60,7 @@ config = dict(
     """
     ZOPE Object Database implementation of rdflib.store.Store.
 
-    The boilerplate ZODB/ZEO handling has been wrapped up in a utility class, ZODBGraph
+    The boilerplate ZODB/ZEO handling has been wrapped up in a utility class, ZODBStore
     """,
     classifiers = ["Programming Language :: Python",
                    "Programming Language :: Python :: 2",
@@ -76,10 +76,10 @@ config = dict(
                    ],
     packages = ["rdflib_zodb"],
     test_suite = "test",
-    install_requires = ["rdflib>=4.0", "BTrees"],
+    install_requires = ["rdflib>=4.1", "BTrees"],
     entry_points = {
         'rdf.plugins.store': [
-            'ZODB = rdflib_zodb.ZODB:ZODBGraph',
+            'ZODB = rdflib_zodb.ZODB:ZODBStore',
         ],
     }
 )
@@ -90,10 +90,8 @@ if sys.version_info[0] >= 3:
     config.update({'src_root': setup_python3()})
 try:
     from setuptools import setup
-    config.update({'test_suite' : "nose.collector"})
 except ImportError:
     from distutils.core import setup
 
 
 setup(**config)
-
