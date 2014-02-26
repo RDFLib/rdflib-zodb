@@ -39,9 +39,12 @@ class ZODBStore(Persistent, Store):
         self.__prefix = self.family.OO.BTree()
         self.__int2obj = self.family.IO.BTree()
         self.__obj2int = self.family.OI.BTree()
-        self.__subjectIndex = self.family.IO.BTree()  # key: sid val: enctriple
-        self.__predicateIndex = self.family.IO.BTree()  # key: pid val: enctriple
-        self.__objectIndex = self.family.IO.BTree()  # key: oid val: enctriple
+        # subject index key: sid val: enctriple
+        self.__subjectIndex = self.family.IO.BTree()
+        # predicate index key: pid val: enctriple
+        self.__predicateIndex = self.family.IO.BTree()
+        # object index key: oid val: enctriple
+        self.__objectIndex = self.family.IO.BTree()
         self.__tripleContexts = self.family.OO.BTree()
         self.__all_contexts = self.family.OO.TreeSet()
         self.__defaultContexts = None
@@ -179,8 +182,8 @@ class ZODBStore(Persistent, Store):
 
         enctriple = self.__encodeTriple(triple)
         sid, pid, oid = enctriple
-        if (sid in self.__subjectIndex and
-            enctriple in self.__subjectIndex[sid]):
+        if ((sid in self.__subjectIndex and
+             enctriple in self.__subjectIndex[sid])):
             return self.__contexts(enctriple)
         else:
             return self.__emptygen()
@@ -214,8 +217,8 @@ class ZODBStore(Persistent, Store):
         defid = self.__obj2id(DEFAULT)
 
         sid, pid, oid = enctriple
-        if (sid in self.__subjectIndex and
-            enctriple in self.__subjectIndex[sid]):
+        if ((sid in self.__subjectIndex and
+             enctriple in self.__subjectIndex[sid])):
             # we know the triple exists somewhere in the store
             if enctriple not in self.__tripleContexts:
                 # triple exists with default ctx info
@@ -229,9 +232,11 @@ class ZODBStore(Persistent, Store):
         else:
             # the triple didn't exist before in the store
             if quoted:  # this context only
-                self.__tripleContexts[enctriple] = PersistentDict({cid: quoted})
+                self.__tripleContexts[enctriple] = PersistentDict(
+                    {cid: quoted})
             else:   # default context as well
-                self.__tripleContexts[enctriple] = PersistentDict({cid: quoted, defid: quoted})
+                self.__tripleContexts[enctriple] = PersistentDict(
+                    {cid: quoted, defid: quoted})
 
         # if this is the first ever triple in the store, set default ctx info
         if self.__defaultContexts is None:
@@ -312,12 +317,15 @@ class ZODBStore(Persistent, Store):
         for tset in self.__subjectIndex.values():
             for enctriple in self.family.OO.Set(tset):  # copy
                 if self.__tripleHasContext(enctriple, cid):
-                    yield self.__decodeTriple(enctriple), self.__contexts(enctriple)
+                    yield (self.__decodeTriple(enctriple),
+                           self.__contexts(enctriple))
 
     def __contexts(self, enctriple):
         """return a generator for all the non-quoted contexts (unencoded)
            the encoded triple appears in"""
-        return (self.__id2obj(cid) for cid in self.__getTripleContexts(enctriple, skipQuoted=True) if cid is not DEFAULT)
+        return (self.__id2obj(cid) for cid
+                in self.__getTripleContexts(enctriple, skipQuoted=True)
+                if cid is not DEFAULT)
 
     def __emptygen(self):
         """return an empty generator"""

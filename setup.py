@@ -8,6 +8,7 @@ try:
 except:
     pass
 
+
 def setup_python3():
     # Taken from "distribute" setup.py
     from distutils.filelist import FileList
@@ -35,6 +36,7 @@ def setup_python3():
 
     return tmp_src
 
+
 # Find version. We have to do this because we can't import it in Python 3 until
 # its been automatically converted in the setup process.
 def find_version(filename):
@@ -47,37 +49,37 @@ def find_version(filename):
 __version__ = find_version('rdflib_zodb/__init__.py')
 
 config = dict(
-    name = 'rdflib-zodb',
-    version = __version__,
-    description = "rdflib extension adding ZODB as back-end store",
-    author = "Graham Higgins",
-    author_email = "gjhiggins@gmail.com",
-    url = "http://github.com/RDFLib/rdflib-zodb",
-    download_url = "https://github.com/RDFLib/rdflib-zodb/zipball/master",
-    license = "BSD",
-    platforms = ["any"],
-    long_description = \
-    """
+    name='rdflib-zodb',
+    version=__version__,
+    description="rdflib extension adding ZODB as back-end store",
+    author="Graham Higgins",
+    author_email="gjhiggins@gmail.com",
+    url="http://github.com/RDFLib/rdflib-zodb",
+    download_url="https://github.com/RDFLib/rdflib-zodb/zipball/master",
+    license="BSD",
+    platforms=["any"],
+    long_description="""
     ZOPE Object Database implementation of rdflib.store.Store.
 
-    The boilerplate ZODB/ZEO handling has been wrapped up in a utility class, ZODBStore
-    """,
-    classifiers = ["Programming Language :: Python",
-                   "Programming Language :: Python :: 2",
-                   "Programming Language :: Python :: 2.6",
-                   "Programming Language :: Python :: 2.7",
-                   'Programming Language :: Python :: 3',
-                   'Programming Language :: Python :: 3.2',
-                   'Programming Language :: Python :: 3.3',
-                   "License :: OSI Approved :: BSD License",
-                   "Topic :: Software Development :: Libraries :: Python Modules",
-                   "Operating System :: OS Independent",
-                   "Natural Language :: English",
-                   ],
-    packages = ["rdflib_zodb"],
-    test_suite = "test",
-    install_requires = ["rdflib >= 4.1.0", "BTrees"],
-    entry_points = {
+    The boilerplate ZODB/ZEO handling has been wrapped up in a utility
+    class, ZODBStore """,
+    classifiers=["Programming Language :: Python",
+                 "Programming Language :: Python :: 2",
+                 "Programming Language :: Python :: 2.6",
+                 "Programming Language :: Python :: 2.7",
+                 'Programming Language :: Python :: 3',
+                 'Programming Language :: Python :: 3.2',
+                 'Programming Language :: Python :: 3.3',
+                 'Programming Language :: Python :: Implementation :: PyPy',
+                 "License :: OSI Approved :: BSD License",
+                 "Topic :: Software Development :: Libraries :: Python Modules",
+                 "Operating System :: OS Independent",
+                 "Natural Language :: English",
+                 ],
+    packages=["rdflib_zodb"],
+    test_suite="test",
+    install_requires=["rdflib >= 4.1.0", "BTrees"],
+    entry_points={
         'rdf.plugins.store': [
             'ZODB = rdflib_zodb.ZODB:ZODBStore',
         ],
@@ -88,10 +90,11 @@ if sys.version_info[0] >= 3:
     from setuptools import setup
     config.update({'use_2to3': True})
     config.update({'src_root': setup_python3()})
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
+else:
+    try:
+        from setuptools import setup
+    except ImportError:
+        from distutils.core import setup
 
 
 setup(**config)
