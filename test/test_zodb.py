@@ -12,7 +12,7 @@ import os
 from rdflib import RDF, URIRef, BNode, ConjunctiveGraph, Graph
 import graph_case
 import context_case
-from rdflib.graph import GraphValue
+
 
 class ZODBGraphTestCase(graph_case.GraphTestCase):
     store_name = "ZODB"
@@ -23,27 +23,27 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
 
     def initConnection(self, clear=True):
         if not(self.conn and self.conn.opened):
-            if self.url.endswith('.fs'): 
+            if self.url.endswith('.fs'):
                 from ZODB.FileStorage import FileStorage
                 if clear and os.path.exists(self.path):
                     os.unlink('/tmp/zodb_local2.fs')
                     os.unlink('/tmp/zodb_local2.fs.index')
                     os.unlink('/tmp/zodb_local2.fs.tmp')
                     os.unlink('/tmp/zodb_local2.fs.lock')
-                openstr = os.path.abspath(os.path.expanduser(self.url[7:])) 
-                fs = FileStorage(openstr) 
-            else: 
-                from ZEO.ClientStorage import ClientStorage 
-                schema, opts = _parse_rfc1738_args(self.url) 
-                fs = ClientStorage((opts['host'], int(opts['port']))) 
-            self.zdb=ZODB.DB(fs) 
+                openstr = os.path.abspath(os.path.expanduser(self.url[7:]))
+                fs = FileStorage(openstr)
+            else:
+                from ZEO.ClientStorage import ClientStorage
+                schema, opts = _parse_rfc1738_args(self.url)
+                fs = ClientStorage((opts['host'], int(opts['port'])))
+            self.zdb=ZODB.DB(fs)
             self.conn=self.zdb.open()
-        root=self.conn.root() 
-        if 'rdflib' not in root: 
+        root=self.conn.root()
+        if 'rdflib' not in root:
             root['rdflib'] = ConjunctiveGraph(self.store_name)
         self.graph = self.g = root['rdflib']
         transaction.commit()
-    
+
     def setUp(self):
         # TODO: use DemoStorage for testing
         self.initConnection()
@@ -55,7 +55,7 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
         self.pizza = URIRef(u'pizza')
         self.cheese = URIRef(u'cheese')
         transaction.begin()
-    
+
     def tearDown(self):
         self.graph.close()
         try:
@@ -71,7 +71,7 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
         os.unlink('/tmp/zodb_local2.fs.index')
         os.unlink('/tmp/zodb_local2.fs.tmp')
         os.unlink('/tmp/zodb_local2.fs.lock')
-    
+
     def addStuff(self):
         tarek = self.tarek
         michel = self.michel
@@ -80,7 +80,7 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
         hates = self.hates
         pizza = self.pizza
         cheese = self.cheese
-        
+
         self.graph.add((tarek, likes, pizza))
         self.graph.add((tarek, likes, cheese))
         self.graph.add((michel, likes, pizza))
@@ -89,7 +89,7 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
         self.graph.add((bob, hates, pizza))
         self.graph.add((bob, hates, michel)) # gasp!
         transaction.commit()
-    
+
     def removeStuff(self):
         tarek = self.tarek
         michel = self.michel
@@ -98,7 +98,7 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
         hates = self.hates
         pizza = self.pizza
         cheese = self.cheese
-        
+
         self.graph.remove((tarek, likes, pizza))
         self.graph.remove((tarek, likes, cheese))
         self.graph.remove((michel, likes, pizza))
@@ -107,14 +107,14 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
         self.graph.remove((bob, hates, pizza))
         self.graph.remove((bob, hates, michel)) # gasp!
         transaction.commit()
-    
+
     def testAdd(self):
         self.addStuff()
-    
+
     def testRemove(self):
         self.addStuff()
         self.removeStuff()
-    
+
     def testTriples(self):
         tarek = self.tarek
         michel = self.michel
@@ -126,49 +126,49 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
         asserte = self.assertEquals
         triples = self.graph.triples
         Any = None
-        
+
         self.addStuff()
-        
+
         # unbound subjects
         asserte(len(list(triples((Any, likes, pizza)))), 2)
         asserte(len(list(triples((Any, hates, pizza)))), 1)
         asserte(len(list(triples((Any, likes, cheese)))), 3)
         asserte(len(list(triples((Any, hates, cheese)))), 0)
-        
+
         # unbound objects
         asserte(len(list(triples((michel, likes, Any)))), 2)
         asserte(len(list(triples((tarek, likes, Any)))), 2)
         asserte(len(list(triples((bob, hates, Any)))), 2)
         asserte(len(list(triples((bob, likes, Any)))), 1)
-        
+
         # unbound predicates
         asserte(len(list(triples((michel, Any, cheese)))), 1)
         asserte(len(list(triples((tarek, Any, cheese)))), 1)
         asserte(len(list(triples((bob, Any, pizza)))), 1)
         asserte(len(list(triples((bob, Any, michel)))), 1)
-        
+
         # unbound subject, objects
         asserte(len(list(triples((Any, hates, Any)))), 2)
         asserte(len(list(triples((Any, likes, Any)))), 5)
-        
+
         # unbound predicates, objects
         asserte(len(list(triples((michel, Any, Any)))), 2)
         asserte(len(list(triples((bob, Any, Any)))), 3)
         asserte(len(list(triples((tarek, Any, Any)))), 2)
-        
+
         # unbound subjects, predicates
         asserte(len(list(triples((Any, Any, pizza)))), 3)
         asserte(len(list(triples((Any, Any, cheese)))), 3)
         asserte(len(list(triples((Any, Any, michel)))), 1)
-        
+
         # all unbound
         asserte(len(list(triples((Any, Any, Any)))), 7)
         self.removeStuff()
         asserte(len(list(triples((Any, Any, Any)))), 0)
-    
+
     def testStatementNode(self):
         graph = self.graph
-        
+
         from rdflib.term import Statement
         c = URIRef("http://example.org/foo#c")
         r = URIRef("http://example.org/foo#r")
@@ -176,78 +176,35 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
         graph.add((s, RDF.value, r))
         self.assertEquals(r, graph.value(s, RDF.value))
         self.assertEquals(s, graph.value(predicate=RDF.value, object=r))
-    
-    def testGraphValue(self):
-        pass
-   
-    #  GraphZValues don't work with current store implementation, they keep a reference to the store (this instance)
-    #  and the pickler does not know how to pickle the store. (or something like that)
-    #  The problem in this case here is, that the underlying store does not clean up completely. It still keeps
-    #  references to the GraphValues in _all_contexts, _obj2int and _int2obj even after all other references have been
-    #  removed
-    def testZGraphValue(self):
-        
-        graph = self.graph
-        
-        alice = URIRef("alice")
-        bob = URIRef("bob")
-        pizza = URIRef("pizza")
-        cheese = URIRef("cheese")
-        
-        g1 = Graph()
-        g1.add((alice, RDF.value, pizza))
-        g1.add((bob, RDF.value, cheese))
-        g1.add((bob, RDF.value, pizza))
-        
-        g2 = Graph()
-        g2.add((bob, RDF.value, pizza))
-        g2.add((bob, RDF.value, cheese))
-        g2.add((alice, RDF.value, pizza))
-        gv1 = GraphValue(store=graph.store, graph=g1)
-        gv2 = GraphValue(store=graph.store, graph=g2)
-        graph.add((gv1, RDF.value, gv2))
-        transaction.commit()
-        self.conn.close()
-        self.zdb.close()
-        self.initConnection(False)
-        graph = self.graph
-        gv1 = GraphValue(store=graph.store, identifier=gv1.identifier)
-        v = graph.value(gv1)
-        # print type(v)
-        self.assertEquals(gv2, v)
-        # print list(gv2)
-        # print gv2.identifier
-        # print(len(graph))
-        graph.remove((gv1, RDF.value, gv2))
-        # print(len(graph))
-    
+
+
 class ZODBContextTestCase(context_case.ContextTestCase):
     store_name = "ZODB"
     storetest = True
     path = '/tmp/zodb_local3.fs'
     url='file:///tmp/zodb_local3.fs'
-    
+
     def setUp(self):
-        if self.url.endswith('.fs'): 
+        if self.url.endswith('.fs'):
             from ZODB.FileStorage import FileStorage
             if os.path.exists(self.path):
                 os.unlink('/tmp/zodb_local3.fs')
                 os.unlink('/tmp/zodb_local3.fs.index')
                 os.unlink('/tmp/zodb_local3.fs.tmp')
                 os.unlink('/tmp/zodb_local3.fs.lock')
-            openstr = os.path.abspath(os.path.expanduser(self.url[7:])) 
-            fs=FileStorage(openstr) 
-        else: 
-            from ZEO.ClientStorage import ClientStorage 
-            schema, opts = _parse_rfc1738_args(self.url) 
-            fs=ClientStorage((opts['host'],int(opts['port']))) 
-        self.zdb=ZODB.DB(fs) 
-        self.conn=self.zdb.open() 
-        root=self.conn.root() 
-        if 'rdflib' not in root: 
+            openstr = os.path.abspath(os.path.expanduser(self.url[7:]))
+            fs=FileStorage(openstr)
+        else:
+            from ZEO.ClientStorage import ClientStorage
+            schema, opts = _parse_rfc1738_args(self.url)
+            fs=ClientStorage((opts['host'],int(opts['port'])))
+        self.zdb=ZODB.DB(fs)
+        self.conn=self.zdb.open()
+        root=self.conn.root()
+        if 'rdflib' not in root:
             root['rdflib'] = ConjunctiveGraph(self.store_name)
         self.graph = self.g = root['rdflib']
-        
+
         self.michel = URIRef(u'michel')
         self.tarek = URIRef(u'tarek')
         self.bob = URIRef(u'bob')
@@ -256,7 +213,7 @@ class ZODBContextTestCase(context_case.ContextTestCase):
         self.pizza = URIRef(u'pizza')
         self.cheese = URIRef(u'cheese')
         transaction.commit()
-    
+
     def tearDown(self):
         self.graph.close()
         transaction.commit()
@@ -266,7 +223,7 @@ class ZODBContextTestCase(context_case.ContextTestCase):
         os.unlink('/tmp/zodb_local3.fs.index')
         os.unlink('/tmp/zodb_local3.fs.tmp')
         os.unlink('/tmp/zodb_local3.fs.lock')
-    
+
     def get_context(self, identifier):
         assert isinstance(identifier, URIRef) or \
                isinstance(identifier, BNode), type(identifier)
@@ -363,7 +320,7 @@ class ZODBContextTestCase(context_case.ContextTestCase):
 
         # addStuffInMultipleContexts is adding the same triple to
         # three different contexts. So it's only + 1
-        self.assertEquals(len(self.graph), oldLen + 1) 
+        self.assertEquals(len(self.graph), oldLen + 1)
 
         graph = Graph(self.graph.store, self.c1)
         self.assertEquals(len(graph), oldLen + 1)
