@@ -11,3 +11,6 @@ incompatible with already persisted stores.
 
 [![Build Status](https://travis-ci.org/RDFLib/rdflib-zodb.png?branch=master)](https://travis-ci.org/RDFLib/rdflib-zodb)
 [![Coverage Status](https://coveralls.io/repos/RDFLib/rdflib-zodb/badge.png)](https://coveralls.io/r/RDFLib/rdflib-zodb)
+[![Latest Version](https://pypip.in/v/rdflib-zodb/badge.png)](https://pypi.python.org/pypi/rdflib-zodb/)
+[![Downloads](https://pypip.in/d/rdflib-zodb/badge.png)](https://pypi.python.org/pypi/rdflib-zodb/)
+[![License](https://pypip.in/license/rdflib-zodb/badge.png)](https://pypi.python.org/pypi/rdflib-zodb/)
