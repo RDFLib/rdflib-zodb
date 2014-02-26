@@ -1,0 +1,3 @@
+[run]
+include=rdflib_zodb/*
+omit=test/*
