@@ -18,13 +18,13 @@ env:
   - TOX_ENV=cover
 
 install:
-    - pip install --use-mirrors --default-timeout 60 tox
+    - pip install --default-timeout 60 tox
 
 script:
     - tox -e $TOX_ENV
 
 after_script:
   - if [ $TOXENV == "cover" ]; then
-    pip install --queiet --use-mirrors coveralls
+    pip install --quiet coveralls
     coveralls;
     fi
