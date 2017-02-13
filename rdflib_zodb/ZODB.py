@@ -1,20 +1,21 @@
 # Author: Michel Pelletier
 
-ANY = Any = None
 
 from rdflib.plugins.memory import randid
 from rdflib.store import Store
 from rdflib import BNode
-#import random
 
 from persistent import Persistent
 from persistent.dict import PersistentDict
+import logging
+import threading
 
 import BTrees
 # from BTrees.OO import intersection
 # from functools import reduce
 
 DEFAULT = BNode(u'ZODBStore:DEFAULT')
+ANY = Any = None
 
 # TODO:
 #   * is zope.intids id search faster? (maybe with large dataset and actual
@@ -24,12 +25,14 @@ DEFAULT = BNode(u'ZODBStore:DEFAULT')
 
 
 class ZODBStore(Persistent, Store):
-
+    logger = logging.getLogger("ZODBStore")
     context_aware = True
     formula_aware = True
     graph_aware = True
 
     family = BTrees.family32
+    maplock = threading.RLock()
+    indlock = threading.RLock()
 
     def __init__(self, configuration=None, identifier=None, family=None):
         super(ZODBStore, self).__init__(configuration, identifier)
@@ -65,7 +68,7 @@ class ZODBStore(Persistent, Store):
 
     def add(self, triple, context, quoted=False):
         # oldlen = len(self)
-        Store.add(self, triple, context, quoted)
+        super(ZODBStore, self).add(triple, context, quoted)
         context = getattr(context, 'identifier', context)
         if context is None:
             context = DEFAULT
@@ -99,6 +102,7 @@ class ZODBStore(Persistent, Store):
         defid = self.__obj2id(DEFAULT)
         req_cid = self.__obj2id(context)
         for triple, contexts in self.triples(triplepat, context):
+            super(ZODBStore, self).remove(triple, context)
             enctriple = self.__encodeTriple(triple)
             for cid in self.__getTripleContexts(enctriple):
                 if context is not DEFAULT and req_cid != cid:
@@ -134,36 +138,40 @@ class ZODBStore(Persistent, Store):
         enctriple = self.__encodeTriple(triplein)
         sid, pid, oid = enctriple
 
-        # all triples case (no triple parts given as pattern)
-        if sid is None and pid is None and oid is None:
-            return self.__all_triples(cid)
+        self.indlock.acquire()
+        try:
+            # all triples case (no triple parts given as pattern)
+            if sid is None and pid is None and oid is None:
+                return self.__all_triples(cid)
 
-        # optimize "triple in graph" case (all parts given)
-        if sid is not None and pid is not None and oid is not None:
-            if sid in self.__subjectIndex and \
-               enctriple in self.__subjectIndex[sid] and \
-               self.__tripleHasContext(enctriple, cid):
-                return ((triplein, self.__contexts(enctriple)) for i in [0])
-            else:
-                return self.__emptygen()
+            # optimize "triple in graph" case (all parts given)
+            if sid is not None and pid is not None and oid is not None:
+                if sid in self.__subjectIndex and \
+                   enctriple in self.__subjectIndex[sid] and \
+                   self.__tripleHasContext(enctriple, cid):
+                    return ((triplein, self.__contexts(enctriple)) for i in [0])
+                else:
+                    return self.__emptygen()
 
-        # remaining cases: one or two out of three given
-        sets = []
-        if sid is not None:
-            if sid in self.__subjectIndex:
-                sets.append(set(self.__subjectIndex[sid]))
-            else:
-                return self.__emptygen()
-        if pid is not None:
-            if pid in self.__predicateIndex:
-                sets.append(set(self.__predicateIndex[pid]))
-            else:
-                return self.__emptygen()
-        if oid is not None:
-            if oid in self.__objectIndex:
-                sets.append(set(self.__objectIndex[oid]))
-            else:
-                return self.__emptygen()
+            # remaining cases: one or two out of three given
+            sets = []
+            if sid is not None:
+                if sid in self.__subjectIndex:
+                    sets.append(set(self.__subjectIndex[sid]))
+                else:
+                    return self.__emptygen()
+            if pid is not None:
+                if pid in self.__predicateIndex:
+                    sets.append(set(self.__predicateIndex[pid]))
+                else:
+                    return self.__emptygen()
+            if oid is not None:
+                if oid in self.__objectIndex:
+                    sets.append(set(self.__objectIndex[oid]))
+                else:
+                    return self.__emptygen()
+        finally:
+            self.indlock.release()
 
         # to get the result, do an intersection of the sets (if necessary)
         if len(sets) > 1:
@@ -277,39 +285,49 @@ class ZODBStore(Persistent, Store):
            return the integer key"""
         if obj is None:
             return None
-        if obj not in self.__obj2int:
-            # id = nextid = getattr(self, '_v_nextid', None)
-            # while True:
-            #     if nextid is None:
-            #         nextid = random.randrange(0, self.family.maxint)
-            #     id = nextid
-            #     if id not in self.__int2obj:
-            #         nextid += 1
-            #         if nextid > self.family.maxint:
-            #             nextid = None
-            #         self._v_nextid = nextid
-            #         break
-            #     nextid = None
-            id = randid()
-            while id in self.__int2obj:
+        self.maplock.acquire()
+        try:
+            if obj not in self.__obj2int:
+                # id = nextid = getattr(self, '_v_nextid', None)
+                # while True:
+                #     if nextid is None:
+                #         nextid = random.randrange(0, self.family.maxint)
+                #     id = nextid
+                #     if id not in self.__int2obj:
+                #         nextid += 1
+                #         if nextid > self.family.maxint:
+                #             nextid = None
+                #         self._v_nextid = nextid
+                #         break
+                #     nextid = None
                 id = randid()
-            self.__obj2int[obj] = id
-            self.__int2obj[id] = obj
-            return id
+                while id in self.__int2obj:
+                    id = randid()
+                self.__obj2int[obj] = id
+                self.__int2obj[id] = obj
+                return id
+        finally:
+            self.maplock.release()
         return self.__obj2int[obj]
 
     def __id2obj(self, id):
         if id is None:
             return None
-        return self.__int2obj[id]
+        self.maplock.acquire()
+        try:
+            return self.__int2obj[id]
+        finally:
+            self.maplock.release()
 
     def __encodeTriple(self, triple):
         """encode a whole triple, returning the encoded triple"""
-        return tuple(map(self.__obj2id, triple))
+        res = tuple(map(self.__obj2id, triple))
+        return res
 
     def __decodeTriple(self, enctriple):
         """decode a whole encoded triple, returning the original triple"""
-        return tuple(map(self.__id2obj, enctriple))
+        res = tuple(map(self.__id2obj, enctriple))
+        return res
 
     def __all_triples(self, cid):
         """return a generator which yields all the triples (unencoded) of
