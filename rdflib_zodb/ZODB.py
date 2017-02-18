@@ -31,8 +31,6 @@ class ZODBStore(Persistent, Store):
     graph_aware = True
 
     family = BTrees.family32
-    maplock = threading.RLock()
-    indlock = threading.RLock()
 
     def __init__(self, configuration=None, identifier=None, family=None):
         super(ZODBStore, self).__init__(configuration, identifier)
@@ -51,6 +49,16 @@ class ZODBStore(Persistent, Store):
         self.__tripleContexts = self.family.OO.BTree()
         self.__all_contexts = self.family.OO.TreeSet()
         self.__defaultContexts = None
+
+    def maplock(self):
+        if not hasattr(self, '_v_maplock'):
+            self._v_maplock = threading.RLock()
+        return self._v_maplock
+
+    def indlock(self):
+        if not hasattr(self, '_v_indlock'):
+            self._v_indlock = threading.RLock()
+        return self._v_indlock
 
     def bind(self, prefix, namespace):
         self.__prefix[namespace] = prefix
@@ -138,7 +146,7 @@ class ZODBStore(Persistent, Store):
         enctriple = self.__encodeTriple(triplein)
         sid, pid, oid = enctriple
 
-        self.indlock.acquire()
+        self.indlock().acquire()
         try:
             # all triples case (no triple parts given as pattern)
             if sid is None and pid is None and oid is None:
@@ -149,7 +157,8 @@ class ZODBStore(Persistent, Store):
                 if sid in self.__subjectIndex and \
                    enctriple in self.__subjectIndex[sid] and \
                    self.__tripleHasContext(enctriple, cid):
-                    return ((triplein, self.__contexts(enctriple)) for i in [0])
+                    ctxs = self.__contexts(enctriple)
+                    return ((triplein, ctxs) for i in [0])
                 else:
                     return self.__emptygen()
 
@@ -171,7 +180,7 @@ class ZODBStore(Persistent, Store):
                 else:
                     return self.__emptygen()
         finally:
-            self.indlock.release()
+            self.indlock().release()
 
         # to get the result, do an intersection of the sets (if necessary)
         if len(sets) > 1:
@@ -285,21 +294,9 @@ class ZODBStore(Persistent, Store):
            return the integer key"""
         if obj is None:
             return None
-        self.maplock.acquire()
+        self.maplock().acquire()
         try:
             if obj not in self.__obj2int:
-                # id = nextid = getattr(self, '_v_nextid', None)
-                # while True:
-                #     if nextid is None:
-                #         nextid = random.randrange(0, self.family.maxint)
-                #     id = nextid
-                #     if id not in self.__int2obj:
-                #         nextid += 1
-                #         if nextid > self.family.maxint:
-                #             nextid = None
-                #         self._v_nextid = nextid
-                #         break
-                #     nextid = None
                 id = randid()
                 while id in self.__int2obj:
                     id = randid()
@@ -307,17 +304,17 @@ class ZODBStore(Persistent, Store):
                 self.__int2obj[id] = obj
                 return id
         finally:
-            self.maplock.release()
+            self.maplock().release()
         return self.__obj2int[obj]
 
     def __id2obj(self, id):
         if id is None:
             return None
-        self.maplock.acquire()
+        self.maplock().acquire()
         try:
             return self.__int2obj[id]
         finally:
-            self.maplock.release()
+            self.maplock().release()
 
     def __encodeTriple(self, triple):
         """encode a whole triple, returning the encoded triple"""
