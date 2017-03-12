@@ -1,19 +1,17 @@
 # Author: Michel Pelletier
 
-ANY = Any = None
 
 from rdflib.plugins.memory import randid
 from rdflib.store import Store
 from rdflib import BNode
-#import random
 
 from persistent import Persistent
 from persistent.dict import PersistentDict
 
 import BTrees
-# from BTrees.OO import intersection
-# from functools import reduce
+from BTrees.Length import Length
 
+ANY = Any = None
 DEFAULT = BNode(u'ZODBStore:DEFAULT')
 
 # TODO:
@@ -30,6 +28,7 @@ class ZODBStore(Persistent, Store):
     graph_aware = True
 
     family = BTrees.family32
+    __context_lengths = None
 
     def __init__(self, configuration=None, identifier=None, family=None):
         super(ZODBStore, self).__init__(configuration, identifier)
@@ -48,6 +47,7 @@ class ZODBStore(Persistent, Store):
         self.__tripleContexts = self.family.OO.BTree()
         self.__all_contexts = self.family.OO.TreeSet()
         self.__defaultContexts = None
+        self.__context_lengths = self.family.IO.BTree()
 
     def bind(self, prefix, namespace):
         self.__prefix[namespace] = prefix
@@ -75,7 +75,8 @@ class ZODBStore(Persistent, Store):
         enctriple = self.__encodeTriple(triple)
         sid, pid, oid = enctriple
 
-        self.__addTripleContext(enctriple, context, quoted)
+        cid = self.__obj2id(context)
+        self.__addTripleContext(enctriple, cid, quoted)
 
         if sid in self.__subjectIndex:
             self.__subjectIndex[sid].add(enctriple)
@@ -104,6 +105,7 @@ class ZODBStore(Persistent, Store):
                 if context is not DEFAULT and req_cid != cid:
                     continue
                 self.__removeTripleContext(enctriple, cid)
+
             ctxs = self.__getTripleContexts(enctriple, skipQuoted=True)
             if defid in ctxs and (context is DEFAULT or len(ctxs) == 1):
                 self.__removeTripleContext(enctriple, defid)
@@ -188,12 +190,25 @@ class ZODBStore(Persistent, Store):
         else:
             return self.__emptygen()
 
+    def _context_lengths(self):
+        if self.__context_lengths is None:
+            self.__context_lengths = self.family.IO.BTree()
+        return self.__context_lengths
+
+    def _context_length(self, cid):
+        context_lengths = self._context_lengths()
+        if cid not in context_lengths:
+            context_lengths[cid] = Length()
+        return context_lengths[cid]
+
     def __len__(self, context=None):
         context = getattr(context, 'identifier', context)
+
         if context is None:
             context = DEFAULT
         cid = self.__obj2id(context)
-        return sum(1 for enctriple, contexts in self.__all_triples(cid))
+        res = self._context_length(cid)()
+        return res
 
     def add_graph(self, graph):
         if not self.graph_aware:
@@ -211,9 +226,8 @@ class ZODBStore(Persistent, Store):
             except KeyError:
                 pass  # we didn't know this graph, no problem
 
-    def __addTripleContext(self, enctriple, context, quoted):
+    def __addTripleContext(self, enctriple, cid, quoted):
         """add the given context to the set of contexts for the triple"""
-        cid = self.__obj2id(context)
         defid = self.__obj2id(DEFAULT)
 
         sid, pid, oid = enctriple
@@ -226,15 +240,21 @@ class ZODBStore(Persistent, Store):
                 self.__tripleContexts[
                     enctriple] = self.__defaultContexts.copy()
 
+            if cid not in self.__tripleContexts[enctriple]:
+                self._context_length(cid).change(1)
             self.__tripleContexts[enctriple][cid] = quoted
             if not quoted:
+                if defid not in self.__tripleContexts[enctriple]:
+                    self._context_length(defid).change(1)
                 self.__tripleContexts[enctriple][defid] = quoted
         else:
+            self._context_length(cid).change(1)
             # the triple didn't exist before in the store
             if quoted:  # this context only
                 self.__tripleContexts[enctriple] = PersistentDict(
                     {cid: quoted})
             else:   # default context as well
+                self._context_length(defid).change(1)
                 self.__tripleContexts[enctriple] = PersistentDict(
                     {cid: quoted, defid: quoted})
 
@@ -267,6 +287,7 @@ class ZODBStore(Persistent, Store):
         ctxs = self.__tripleContexts.get(
             enctriple, self.__defaultContexts).copy()
         del ctxs[cid]
+        self._context_length(cid).change(-1)
         if ctxs == self.__defaultContexts:
             del self.__tripleContexts[enctriple]
         else:

@@ -314,6 +314,25 @@ class ZODBContextTestCase(context_case.ContextTestCase):
         self.assertEquals(len(self.graph), oldLen)
         self.assertEquals(len(graph), 0)
 
+    def testLenInOneContext2(self):
+        c1 = self.c1
+        # make sure context is empty
+
+        self.graph.remove_context(self.get_context(c1))
+        graph = Graph(self.graph.store, c1)
+        oldLen = len(self.graph)
+
+        for i in range(0, 10):
+            graph.add((BNode(), self.hates, self.hates))
+        self.assertEquals(len(graph), oldLen + 10)
+        self.assertEquals(len(self.get_context(c1)), oldLen + 10)
+        for i, x in enumerate(graph.triples((None, None, None))):
+            if i >= 5:
+                break
+            self.graph.remove(x)
+        self.assertEquals(len(graph), 5)
+        self.assertEquals(len(self.graph), oldLen + 5)
+
     def testLenInMultipleContexts(self):
         oldLen = len(self.graph)
         self.addStuffInMultipleContexts()
