@@ -11,6 +11,7 @@ from persistent import Persistent
 from persistent.dict import PersistentDict
 
 import BTrees
+from BTrees.Length import Length
 # from BTrees.OO import intersection
 # from functools import reduce
 
@@ -30,6 +31,7 @@ class ZODBStore(Persistent, Store):
     graph_aware = True
 
     family = BTrees.family32
+    __context_lengths = None
 
     def __init__(self, configuration=None, identifier=None, family=None):
         super(ZODBStore, self).__init__(configuration, identifier)
@@ -48,6 +50,7 @@ class ZODBStore(Persistent, Store):
         self.__tripleContexts = self.family.OO.BTree()
         self.__all_contexts = self.family.OO.TreeSet()
         self.__defaultContexts = None
+        self.__context_lengths = self.family.IO.BTree()
 
     def bind(self, prefix, namespace):
         self.__prefix[namespace] = prefix
@@ -75,7 +78,8 @@ class ZODBStore(Persistent, Store):
         enctriple = self.__encodeTriple(triple)
         sid, pid, oid = enctriple
 
-        self.__addTripleContext(enctriple, context, quoted)
+        cid = self.__obj2id(context)
+        self.__addTripleContext(enctriple, cid, quoted)
 
         if sid in self.__subjectIndex:
             self.__subjectIndex[sid].add(enctriple)
@@ -91,6 +95,11 @@ class ZODBStore(Persistent, Store):
             self.__objectIndex[oid].add(enctriple)
         else:
             self.__objectIndex[oid] = self.family.OO.Set((enctriple,))
+
+        if cid not in self.context_lengths():
+            self.context_lengths()[cid] = Length(1)
+        else:
+            self.context_lengths()[cid].change(1)
 
     def remove(self, triplepat, context=None):
         context = getattr(context, 'identifier', context)
@@ -188,12 +197,21 @@ class ZODBStore(Persistent, Store):
         else:
             return self.__emptygen()
 
+    def context_lengths(self):
+        if self.__context_lengths is None:
+            self.__context_lengths = self.family.IO.BTree()
+        return self.__context_lengths
+
     def __len__(self, context=None):
         context = getattr(context, 'identifier', context)
+
         if context is None:
             context = DEFAULT
         cid = self.__obj2id(context)
-        return sum(1 for enctriple, contexts in self.__all_triples(cid))
+        if cid not in self.context_lengths():
+            self.context_lengths()[cid] = Length(
+                sum(1 for enctriple, contexts in self.__all_triples(cid)))
+        return self.context_lengths()[cid]()
 
     def add_graph(self, graph):
         if not self.graph_aware:
@@ -211,9 +229,8 @@ class ZODBStore(Persistent, Store):
             except KeyError:
                 pass  # we didn't know this graph, no problem
 
-    def __addTripleContext(self, enctriple, context, quoted):
+    def __addTripleContext(self, enctriple, cid, quoted):
         """add the given context to the set of contexts for the triple"""
-        cid = self.__obj2id(context)
         defid = self.__obj2id(DEFAULT)
 
         sid, pid, oid = enctriple
