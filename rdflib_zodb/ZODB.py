@@ -7,6 +7,7 @@ from rdflib import BNode
 
 from persistent import Persistent
 from persistent.dict import PersistentDict
+from itertools import chain
 
 import BTrees
 from BTrees.Length import Length
@@ -295,29 +296,121 @@ class ZODBStore(Persistent, Store):
 
     def __obj2id(self, obj):
         """encode object, storing it in the encoding map if necessary, and
-           return the integer key"""
+           return the integer key.
+
+           New identifiers are generated in such a way as to increase the
+           chance that identifers added at the same time will be clustered
+           closer together in the btree. This relies on the assumption that
+           data added within a single run of a program is likelier to be
+           accessed together at a later time than other data.
+        """
         if obj is None:
             return None
         if obj not in self.__obj2int:
-            # id = nextid = getattr(self, '_v_nextid', None)
-            # while True:
-            #     if nextid is None:
-            #         nextid = random.randrange(0, self.family.maxint)
-            #     id = nextid
-            #     if id not in self.__int2obj:
-            #         nextid += 1
-            #         if nextid > self.family.maxint:
-            #             nextid = None
-            #         self._v_nextid = nextid
-            #         break
-            #     nextid = None
-            id = randid()
-            while id in self.__int2obj:
-                id = randid()
-            self.__obj2int[obj] = id
-            self.__int2obj[id] = obj
-            return id
+            if not hasattr(self, '_v_next_id'):
+                self._v_next_id = randid()
+            new_id = self._v_next_id
+            while new_id in self.__int2obj:
+                new_id += randid()
+            self._v_next_id = new_id + 1
+            self.__obj2int[obj] = new_id
+            self.__int2obj[new_id] = obj
+            return new_id
         return self.__obj2int[obj]
+
+    def __makeSlices(self, items, thresh=100000, single_serving=False):
+        if not single_serving:
+            items = sorted(items)
+            _min = items[0]
+            _last = items[0]
+            for cur in items:
+                if _last - cur > thresh:
+                    yield (_min, _last)
+                    _min = cur
+                _last = cur
+            yield(_min, _last)
+        else:
+            yield (min(items), max(items))
+
+    def __exo(self, index, triple, context, tidx, aidx, bidx):
+        target = triple[tidx]
+        cid = self.__obj2id(context)
+        if len(target) == 1:
+            triple = tuple(s[0] if s == target else s for s in triple)
+            return self.triples(triple, context)
+        elif len(target) == 0:
+            triple = tuple(None if s == target else s for s in triple)
+            return self.triples(triple, context)
+        else:
+            results = set()
+            aid = self.__obj2id(triple[aidx])
+            bid = self.__obj2id(triple[bidx])
+            obj_ids = list(self.__multiple_obj2id(target))
+
+            slices = self.__makeSlices(obj_ids, single_serving=True)
+            for min_id, max_id in slices:
+                items = dict(index.iteritems(min=min_id, max=max_id))
+                for y in obj_ids:
+                    if aid is None and bid is None:
+                        results.add(items[y])
+                    elif aid is None:
+                        results.add(z for z in items[y] if z[bidx] == bid)
+                    elif bid is None:
+                        results.add(z for z in items[y] if z[aidx] == aid)
+                    else:
+                        results.add(z for z in items[y]
+                                    if (z[aidx] == aid and z[bidx] == bid))
+            return ((self.__decodeTriple(enctriple),
+                     self.__contexts(enctriple))
+                    for enctriples in results
+                    for enctriple in enctriples
+                    if self.__tripleHasContext(enctriple, cid))
+
+    def triples_choices(self, triple, context=None):
+        context = getattr(context, 'identifier', context)
+        if context is not None:
+            if context == self:
+                context = None
+        if context is None:
+            context = DEFAULT
+
+        subject, predicate, object_ = triple
+        if isinstance(object_, list):
+            assert not isinstance(
+                subject, list), "object_ / subject are both lists"
+            assert not isinstance(
+                predicate, list), "object_ / predicate are both lists"
+            if object_:
+                return self.__exo(self.__objectIndex, triple, context, 2, 0, 1)
+            else:
+                return self.triples((subject, predicate, None), context)
+
+        elif isinstance(subject, list):
+            assert not isinstance(
+                predicate, list), "subject / predicate are both lists"
+            if subject:
+                return self.__exo(self.__subjectIndex, triple, context,
+                                  0, 1, 2)
+            else:
+                return self.triples((None, predicate, object_), context)
+
+        elif isinstance(predicate, list):
+            assert not isinstance(
+                subject, list), "predicate / subject are both lists"
+            if predicate:
+                return self.__exo(self.__predicateIndex, triple, context,
+                                  1, 0, 2)
+            else:
+                return self.triples((subject, None, object_), context)
+
+    def __multiple_obj2id(self, objs):
+        slices = list(self.__makeSlices(objs, single_serving=True))
+        items_list = []
+        for least_obj, greatest_obj in slices:
+            items = dict(self.__obj2int.iteritems(min=least_obj,
+                                                  max=greatest_obj))
+            items_list.append(items[j] for j in objs)
+        return chain(*items_list)
 
     def __id2obj(self, id):
         if id is None:
