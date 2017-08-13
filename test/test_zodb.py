@@ -166,6 +166,76 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
         self.removeStuff()
         asserte(len(list(triples((Any, Any, Any)))), 0)
 
+    def testTriplesChoicesNoList(self):
+        """
+        Based on other implementations, including the 'fallback' in rdflib, the
+        appropriate, if confusing, response in this case is to return nothing
+        """
+        self.addStuff()
+        self.assertEqual(
+            list(
+                self.graph.triples_choices(
+                    (self.tarek, self.likes, self.pizza))),
+            [],
+            'triples_choices without any lists should return nothing even if'
+            ' triples would return something for the same input')
+
+    def testTriplesChoicesSimple(self):
+        self.addStuff()
+        self.assertEqual(
+            set(self.graph.triples_choices(([self.tarek, self.michel],
+                                            self.likes,
+                                            self.pizza))),
+            set([(self.tarek, self.likes, self.pizza),
+                 (self.michel, self.likes, self.pizza)]))
+
+    def testTriplesChoicesRepeated(self):
+        """
+        Although the fallback implementation, would double the results,
+        I don't think there's any meaningful information in that, so we
+        don't bother
+        """
+        self.addStuff()
+        self.assertEqual(
+            list(self.graph.triples_choices(([self.tarek, self.tarek],
+                                             self.likes,
+                                             self.pizza))),
+            list([(self.tarek, self.likes, self.pizza)]))
+
+    def testTriplesChoicesEmptyList(self):
+        self.addStuff()
+        self.assertEqual(
+            set(self.graph.triples_choices(([],
+                                            self.likes,
+                                            self.pizza))),
+            set([(self.tarek, self.likes, self.pizza),
+                 (self.michel, self.likes, self.pizza)]))
+
+    def testTriplesChoicesNoneInList(self):
+        self.addStuff()
+        self.assertEqual(
+            set(self.graph.triples_choices(([None],
+                                            self.likes,
+                                            self.pizza))),
+            set([(self.tarek, self.likes, self.pizza),
+                 (self.michel, self.likes, self.pizza)]),
+            'a None in the list acts like just []')
+
+    def testTriplesChoicesDoubleNone(self):
+        """ Double the 'None' won't double the fun.
+
+        This is a slightly different test than testTriplesChoicesRepeated
+        because handling of multiple Nones is a little different internally
+        """
+        self.addStuff()
+        self.assertEqual(
+            sorted(self.graph.triples_choices(([None, None],
+                                            self.likes,
+                                            self.pizza))),
+            sorted([(self.michel, self.likes, self.pizza),
+                    (self.tarek, self.likes, self.pizza)]),
+            'a None in the list might as well not be there')
+
     def testStatementNode(self):
         graph = self.graph
 

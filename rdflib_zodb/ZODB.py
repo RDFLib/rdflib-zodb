@@ -333,19 +333,52 @@ class ZODBStore(Persistent, Store):
             yield (min(items), max(items))
 
     def __exo(self, index, triple, context, tidx, aidx, bidx):
+        """
+        Computes the triples_choices result for the given triple
+
+        Parameters
+        ----------
+        index : IOBTree
+            the index of the 'target' entry
+        triple : tuple
+            the triple to query against
+        context : identifier
+            the context for the query
+        tidx : int
+            'target' index. The one with the list
+        aidx : int
+            One of the other indices
+        bidx : int
+            One of the other indices
+        """
         target = triple[tidx]
         cid = self.__obj2id(context)
         if len(target) == 1:
-            triple = tuple(s[0] if s == target else s for s in triple)
+            triple = tuple(s[0] if s is target else s for s in triple)
             return self.triples(triple, context)
         elif len(target) == 0:
-            triple = tuple(None if s == target else s for s in triple)
+            triple = tuple(None if s is target else s for s in triple)
+            return self.triples(triple, context)
+        elif None in target:
+            # It's not clear whether we need to return the other entries based
+            # on the 'fallback'/default implementation. I'm going with the
+            # cheapest interpretation of just computing as if there were one
+            # Null there
+            triple = tuple(None if s is target else s for s in triple)
             return self.triples(triple, context)
         else:
             results = set()
             aid = self.__obj2id(triple[aidx])
             bid = self.__obj2id(triple[bidx])
-            obj_ids = list(self.__multiple_obj2id(target))
+            obj_ids = sorted(self.__multiple_obj2id(target))
+
+            last = None
+            newids = []
+            for x in obj_ids:
+                if x != last:
+                    newids.append(x)
+                last = x
+            obj_ids = newids
 
             slices = self.__makeSlices(obj_ids, single_serving=True)
             for min_id, max_id in slices:
@@ -393,7 +426,6 @@ class ZODBStore(Persistent, Store):
                                   0, 1, 2)
             else:
                 return self.triples((None, predicate, object_), context)
-
         elif isinstance(predicate, list):
             assert not isinstance(
                 subject, list), "predicate / subject are both lists"
@@ -402,6 +434,8 @@ class ZODBStore(Persistent, Store):
                                   1, 0, 2)
             else:
                 return self.triples((subject, None, object_), context)
+        else:
+            return self.__emptygen()
 
     def __multiple_obj2id(self, objs):
         slices = list(self.__makeSlices(objs, single_serving=True))
