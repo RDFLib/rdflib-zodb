@@ -1,13 +1,11 @@
 # Author: Michel Pelletier
 
-
 from rdflib.plugins.memory import randid
 from rdflib.store import Store
 from rdflib import BNode
 
 from persistent import Persistent
 from persistent.dict import PersistentDict
-from itertools import chain
 
 import BTrees
 from BTrees.Length import Length
@@ -20,6 +18,29 @@ DEFAULT = BNode(u'ZODBStore:DEFAULT')
 #     disk access?)
 #   * compare BTree intersect to builtin set operation (needs reduce)
 #   * compare against BDB with disk access
+
+
+def grouper(iterable, n):
+    "Collect data into fixed-length chunks or blocks"
+    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx
+    i = 0
+    l = []
+    while True:
+        try:
+            l.append(next(iterable))
+        except Exception:
+            break
+
+        if i > 0 and i % n == 0:
+            yield l
+            l = []
+        i += 1
+
+    if len(l) != 0:
+        yield l
+
+
+NO_ID = object()
 
 
 class ZODBStore(Persistent, Store):
@@ -64,6 +85,32 @@ class ZODBStore(Persistent, Store):
         for prefix, namespace in self.__namespace.iteritems():
             yield prefix, namespace
 
+    def addN(self, quads):
+        for qgroup in grouper(quads, 10000):
+            encquads = list(((self.__obj2id(q[0]),
+                              self.__obj2id(q[1]),
+                              self.__obj2id(q[2])),
+                             self.__obj2id(q[3]))
+                            for q in qgroup)
+
+            for enctriple, ctx in encquads:
+                self.__addTripleContext(enctriple, ctx, False)
+
+            self._addN_helper(encquads, self.__subjectIndex, 0)
+            self._addN_helper(encquads, self.__objectIndex, 1)
+            self._addN_helper(encquads, self.__predicateIndex, 2)
+
+    box = [None]
+
+    def _addN_helper(self, encquads, index, p):
+        for enctriple, __ in encquads:
+            ind_id = enctriple[p]
+            if ind_id in index:
+                index[ind_id].add(enctriple)
+            else:
+                self.box[0] = enctriple
+                index[ind_id] = self.family.OO.Set(self.box)
+
     def add(self, triple, context, quoted=False):
         # oldlen = len(self)
         Store.add(self, triple, context, quoted)
@@ -95,6 +142,7 @@ class ZODBStore(Persistent, Store):
             self.__objectIndex[oid] = self.family.OO.Set((enctriple,))
 
     def remove(self, triplepat, context=None):
+        Store.remove(self, triplepat, context)
         context = getattr(context, 'identifier', context)
         if context is None:
             context = DEFAULT
@@ -133,8 +181,15 @@ class ZODBStore(Persistent, Store):
         if context is None:
             context = DEFAULT
 
-        cid = self.__obj2id(context)
-        enctriple = self.__encodeTriple(triplein)
+        cid = self.__obj2id(context, fail_if_not_found=True)
+        if cid is NO_ID:
+            return self.__emptygen()
+
+        enctriple = self.__encodeTriple(triplein, fail_if_not_found=True)
+
+        if NO_ID in enctriple:
+            return self.__emptygen()
+
         sid, pid, oid = enctriple
 
         # all triples case (no triple parts given as pattern)
@@ -294,7 +349,7 @@ class ZODBStore(Persistent, Store):
         else:
             self.__tripleContexts[enctriple] = ctxs
 
-    def __obj2id(self, obj):
+    def __obj2id(self, obj, fail_if_not_found=False):
         """encode object, storing it in the encoding map if necessary, and
            return the integer key.
 
@@ -306,17 +361,18 @@ class ZODBStore(Persistent, Store):
         """
         if obj is None:
             return None
-        if obj not in self.__obj2int:
+
+        res = self.__obj2int.get(obj, NO_ID)
+        if res is NO_ID and not fail_if_not_found:
             if not hasattr(self, '_v_next_id'):
                 self._v_next_id = randid()
             new_id = self._v_next_id
-            while new_id in self.__int2obj:
+            while self.__int2obj.insert(new_id, obj) == 0:
                 new_id += randid()
             self._v_next_id = new_id + 1
             self.__obj2int[obj] = new_id
-            self.__int2obj[new_id] = obj
-            return new_id
-        return self.__obj2int[obj]
+            res = new_id
+        return res
 
     def __makeSlices(self, items, thresh=100000, single_serving=False):
         if not single_serving:
@@ -352,7 +408,6 @@ class ZODBStore(Persistent, Store):
             One of the other indices
         """
         target = triple[tidx]
-        cid = self.__obj2id(context)
         if len(target) == 1:
             triple = tuple(s[0] if s is target else s for s in triple)
             return self.triples(triple, context)
@@ -368,9 +423,26 @@ class ZODBStore(Persistent, Store):
             return self.triples(triple, context)
         else:
             results = set()
-            aid = self.__obj2id(triple[aidx])
-            bid = self.__obj2id(triple[bidx])
+            aid = self.__obj2id(triple[aidx], fail_if_not_found=True)
+            if aid is NO_ID:
+                return self.__emptygen()
+
+            bid = self.__obj2id(triple[bidx], fail_if_not_found=True)
+
+            if bid is NO_ID:
+                return self.__emptygen()
+
             obj_ids = sorted(self.__multiple_obj2id(target))
+
+            if len(obj_ids) == 0:
+                return self.__emptygen()
+
+            # I'm assuming that a bad context is an outside occurance which is
+            # why I don't check it earlier than recoving the IDs from the
+            # target
+            cid = self.__obj2id(context, fail_if_not_found=True)
+            if cid is NO_ID:
+                return self.__emptygen()
 
             last = None
             newids = []
@@ -393,6 +465,7 @@ class ZODBStore(Persistent, Store):
                     else:
                         results.add(z for z in items[y]
                                     if (z[aidx] == aid and z[bidx] == bid))
+
             return ((self.__decodeTriple(enctriple),
                      self.__contexts(enctriple))
                     for enctriples in results
@@ -438,26 +511,32 @@ class ZODBStore(Persistent, Store):
             return self.__emptygen()
 
     def __multiple_obj2id(self, objs):
+        """ Note that the semantics are different from obj2id: If there are
+        'misses' here, there won't be any updates. Also, there's no option
+        to 'fail' if there's a miss, although one can always check if the
+        IDs returned and the objects passed in are the same in number.
+        """
         slices = list(self.__makeSlices(objs, single_serving=True))
-        items_list = []
         for least_obj, greatest_obj in slices:
             items = dict(self.__obj2int.iteritems(min=least_obj,
                                                   max=greatest_obj))
-            items_list.append(items[j] for j in objs)
-        return chain(*items_list)
+            for j in objs:
+                v = items.get(j)
+                if v is not None:
+                    yield v
 
     def __id2obj(self, id):
         if id is None:
             return None
         return self.__int2obj[id]
 
-    def __encodeTriple(self, triple):
+    def __encodeTriple(self, triple, fail_if_not_found=False):
         """encode a whole triple, returning the encoded triple"""
-        return tuple(map(self.__obj2id, triple))
+        return tuple(self.__obj2id(s, fail_if_not_found) for s in triple)
 
     def __decodeTriple(self, enctriple):
         """decode a whole encoded triple, returning the original triple"""
-        return tuple(map(self.__id2obj, enctriple))
+        return tuple(self.__id2obj(s) for s in enctriple)
 
     def __all_triples(self, cid):
         """return a generator which yields all the triples (unencoded) of
