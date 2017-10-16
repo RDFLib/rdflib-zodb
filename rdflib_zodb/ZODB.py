@@ -6,6 +6,9 @@ from rdflib import BNode
 
 from persistent import Persistent
 from persistent.dict import PersistentDict
+import transaction
+
+import itertools
 
 import BTrees
 from BTrees.Length import Length
@@ -21,26 +24,32 @@ DEFAULT = BNode(u'ZODBStore:DEFAULT')
 
 
 def grouper(iterable, n):
-    "Collect data into fixed-length chunks or blocks"
-    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx
+    "Collect data into chunks of at most n elements"
     i = 0
-    l = []
+    lst = []
     while True:
         try:
-            l.append(next(iterable))
+            lst.append(next(iterable))
         except Exception:
             break
 
         if i > 0 and i % n == 0:
-            yield l
-            l = []
+            yield lst
+            lst = []
         i += 1
 
-    if len(l) != 0:
-        yield l
+    if len(lst) != 0:
+        yield lst
 
 
 NO_ID = object()
+
+
+def _fix_ctx(ctx):
+    ctx = getattr(ctx, 'identifier', ctx)
+    if ctx is None:
+        ctx = DEFAULT
+    return ctx
 
 
 class ZODBStore(Persistent, Store):
@@ -48,6 +57,8 @@ class ZODBStore(Persistent, Store):
     context_aware = True
     formula_aware = True
     graph_aware = True
+    transaction_aware = True
+    supports_range_queries = True
 
     family = BTrees.family32
     __context_lengths = None
@@ -85,31 +96,42 @@ class ZODBStore(Persistent, Store):
         for prefix, namespace in self.__namespace.iteritems():
             yield prefix, namespace
 
+    def rollback(self):
+        transaction.abort()
+        transaction.begin()
+
+    def commit(self):
+        transaction.commit()
+        transaction.begin()
+
     def addN(self, quads):
         for qgroup in grouper(quads, 10000):
-            encquads = list(((self.__obj2id(q[0]),
-                              self.__obj2id(q[1]),
-                              self.__obj2id(q[2])),
-                             self.__obj2id(q[3]))
-                            for q in qgroup)
+            encquads = list()
+            for q in qgroup:
+                ctx = _fix_ctx(q[3])
+                encquads.append(((self.__obj2id(q[0]),
+                                  self.__obj2id(q[1]),
+                                  self.__obj2id(q[2])),
+                                self.__obj2id(ctx),
+                                ctx))
 
-            for enctriple, ctx in encquads:
-                self.__addTripleContext(enctriple, ctx, False)
+            for enctriple, cid, context in encquads:
+                if context is not DEFAULT:
+                    self.__all_contexts.add(context)
+                self.__addTripleContext(enctriple, cid, False)
 
             self._addN_helper(encquads, self.__subjectIndex, 0)
             self._addN_helper(encquads, self.__objectIndex, 1)
             self._addN_helper(encquads, self.__predicateIndex, 2)
 
-    box = [None]
-
     def _addN_helper(self, encquads, index, p):
-        for enctriple, __ in encquads:
+        for enctriple, __, __ in encquads:
             ind_id = enctriple[p]
-            if ind_id in index:
-                index[ind_id].add(enctriple)
-            else:
-                self.box[0] = enctriple
-                index[ind_id] = self.family.OO.Set(self.box)
+            s = index.get(ind_id, None)
+            if s is None:
+                s = self.family.OO.Set((enctriple,))
+                index[ind_id] = s
+            s.add(enctriple)
 
     def add(self, triple, context, quoted=False):
         # oldlen = len(self)
@@ -140,6 +162,9 @@ class ZODBStore(Persistent, Store):
             self.__objectIndex[oid].add(enctriple)
         else:
             self.__objectIndex[oid] = self.family.OO.Set((enctriple,))
+
+    def __objsInRange(self, rng):
+        return minmax(self.__obj2int.values(min=rng[0], max=rng[1]))
 
     def remove(self, triplepat, context=None):
         Store.remove(self, triplepat, context)
@@ -174,6 +199,7 @@ class ZODBStore(Persistent, Store):
             self.__all_contexts.remove(context)
 
     def triples(self, triplein, context=None):
+        rng = None
         context = getattr(context, 'identifier', context)
         if context is not None:
             if context == self:  # hmm...does this really ever happen?
@@ -184,8 +210,13 @@ class ZODBStore(Persistent, Store):
         cid = self.__obj2id(context, fail_if_not_found=True)
         if cid is NO_ID:
             return self.__emptygen()
-
-        enctriple = self.__encodeTriple(triplein, fail_if_not_found=True)
+        if isinstance(triplein[2], tuple):
+            enctriple = (self.__obj2id(triplein[0]),
+                         self.__obj2id(triplein[1]),
+                         None)
+            rng = triplein[2]
+        else:
+            enctriple = self.__encodeTriple(triplein, fail_if_not_found=True)
 
         if NO_ID in enctriple:
             return self.__emptygen()
@@ -223,6 +254,9 @@ class ZODBStore(Persistent, Store):
             else:
                 return self.__emptygen()
 
+        if rng is not None:
+            rng = self.__objsInRange(rng)
+
         # to get the result, do an intersection of the sets (if necessary)
         if len(sets) > 1:
             # BTrees intersection: reduce(intersection, sets)
@@ -230,9 +264,17 @@ class ZODBStore(Persistent, Store):
         else:
             enctriples = sets[0].copy()  # OOSet(sets[0])
 
-        return ((self.__decodeTriple(enctriple), self.__contexts(enctriple))
-                for enctriple in enctriples
-                if self.__tripleHasContext(enctriple, cid))
+        if rng is not None:
+            return ((self.__decodeTriple(enctriple),
+                     self.__contexts(enctriple))
+                    for enctriple in enctriples
+                    if self.__tripleHasContext(enctriple, cid)
+                    and enctriple[2] > rng[0] and enctriple[2] < rng[1])
+        else:
+            return ((self.__decodeTriple(enctriple),
+                     self.__contexts(enctriple))
+                    for enctriple in enctriples
+                    if self.__tripleHasContext(enctriple, cid))
 
     def contexts(self, triple=None):
         if triple is None or triple is (None, None, None):
@@ -558,3 +600,23 @@ class ZODBStore(Persistent, Store):
         """return an empty generator"""
         if False:
             yield
+
+
+def minmax(data):
+    """
+    Computes the minimum and maximum values in one-pass using only
+    1.5*len(data) comparisons
+    """
+    it = iter(data)
+    try:
+        lo = hi = next(it)
+    except StopIteration:
+        raise ValueError('minmax() arg is an empty sequence')
+    for x, y in itertools.izip_longest(it, it, fillvalue=lo):
+        if x > y:
+            x, y = y, x
+        if x < lo:
+            lo = x
+        if y > hi:
+            hi = y
+    return lo, hi
