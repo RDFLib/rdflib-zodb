@@ -329,39 +329,43 @@ class ZODBStore(Persistent, Store):
         defid = self.__obj2id(DEFAULT)
 
         sid, pid, oid = enctriple
-        if ((sid in self.__subjectIndex and
-             enctriple in self.__subjectIndex[sid])):
+        sind = self.__subjectIndex.get(sid, None)
+        if sind is not None and enctriple in sind:
             # we know the triple exists somewhere in the store
-            if enctriple not in self.__tripleContexts:
+            tripctx = self.__tripleContexts.get(enctriple, None)
+            if tripctx is None:
                 # triple exists with default ctx info
                 # start with a copy of the default ctx info
-                self.__tripleContexts[
-                    enctriple] = self.__defaultContexts.copy()
+                tripctx = self.__defaultContexts.copy()
+                self.__tripleContexts[enctriple] = tripctx
 
-            if cid not in self.__tripleContexts[enctriple]:
+            if cid not in tripctx:
                 self._context_length(cid).change(1)
-            self.__tripleContexts[enctriple][cid] = quoted
+            tripctx[cid] = quoted
             if not quoted:
-                if defid not in self.__tripleContexts[enctriple]:
+                if defid not in tripctx:
                     self._context_length(defid).change(1)
-                self.__tripleContexts[enctriple][defid] = quoted
+                tripctx[defid] = quoted
         else:
             self._context_length(cid).change(1)
             # the triple didn't exist before in the store
-            if quoted:  # this context only
-                self.__tripleContexts[enctriple] = PersistentDict(
-                    {cid: quoted})
-            else:   # default context as well
+            dct = {cid: quoted}
+            if not quoted:
+                dct[defid] = quoted
+
+            x = PersistentDict(dct)
+            self.__tripleContexts[enctriple] = x
+            tripctx = self.__tripleContexts[enctriple]
+
+            if not quoted:
                 self._context_length(defid).change(1)
-                self.__tripleContexts[enctriple] = PersistentDict(
-                    {cid: quoted, defid: quoted})
 
         # if this is the first ever triple in the store, set default ctx info
         if self.__defaultContexts is None:
             self.__defaultContexts = self.__tripleContexts[enctriple]
 
         # if the context info is the same as default, no need to store it
-        if self.__tripleContexts[enctriple] == self.__defaultContexts:
+        if tripctx == self.__defaultContexts:
             del self.__tripleContexts[enctriple]
 
     def __getTripleContexts(self, enctriple, skipQuoted=False):
