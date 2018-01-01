@@ -7,6 +7,7 @@ from rdflib import BNode
 from persistent import Persistent
 from persistent.dict import PersistentDict
 import transaction
+import logging
 
 import itertools
 
@@ -15,7 +16,7 @@ from BTrees.Length import Length
 
 ANY = Any = None
 DEFAULT = BNode(u'ZODBStore:DEFAULT')
-
+L = logging.getLogger(__name__)
 # TODO:
 #   * is zope.intids id search faster? (maybe with large dataset and actual
 #     disk access?)
@@ -121,8 +122,8 @@ class ZODBStore(Persistent, Store):
                 self.__addTripleContext(enctriple, cid, False)
 
             self._addN_helper(encquads, self.__subjectIndex, 0)
-            self._addN_helper(encquads, self.__objectIndex, 1)
-            self._addN_helper(encquads, self.__predicateIndex, 2)
+            self._addN_helper(encquads, self.__predicateIndex, 1)
+            self._addN_helper(encquads, self.__objectIndex, 2)
 
     def _addN_helper(self, encquads, index, p):
         for enctriple, __, __ in encquads:
