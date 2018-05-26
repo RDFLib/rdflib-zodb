@@ -2,7 +2,7 @@
 
 from rdflib.plugins.memory import randid
 from rdflib.store import Store
-from rdflib import BNode
+from rdflib import BNode, RDF
 
 from persistent import Persistent
 from persistent.dict import PersistentDict
@@ -63,6 +63,7 @@ class ZODBStore(Persistent, Store):
 
     family = BTrees.family32
     __context_lengths = None
+    __type_index = None
 
     def __init__(self, configuration=None, identifier=None, family=None):
         super(ZODBStore, self).__init__(configuration, identifier)
@@ -82,6 +83,24 @@ class ZODBStore(Persistent, Store):
         self.__all_contexts = self.family.OO.TreeSet()
         self.__defaultContexts = None
         self.__context_lengths = self.family.IO.BTree()
+
+        # index of rdf:type triples
+        # XXX: Make this generic
+        self.__type_index = self.family.IO.BTree()
+        self._rdf_type_id()
+
+    def _rdf_type_index(self):
+        if not hasattr(self, '_rdf_type_index_v'):
+            type_trips = self.__predicateIndex.get(self._rdf_type_id(), ())
+            self._rdf_type_index_v = self.family.IO.BTree()
+            for t in type_trips:
+                self._add_indexed(t)
+        return self._rdf_type_index_v
+
+    def _rdf_type_id(self):
+        if not hasattr(self, '__rdf_type_id_v'):
+            self.__rdf_type_id_v = self.__obj2id(RDF.type)
+        return self.__rdf_type_id_v
 
     def bind(self, prefix, namespace):
         self.__prefix[namespace] = prefix
@@ -120,6 +139,7 @@ class ZODBStore(Persistent, Store):
                 if context is not DEFAULT:
                     self.__all_contexts.add(context)
                 self.__addTripleContext(enctriple, cid, False)
+                self._add_indexed(enctriple)
 
             self._addN_helper(encquads, self.__subjectIndex, 0)
             self._addN_helper(encquads, self.__predicateIndex, 1)
@@ -130,9 +150,9 @@ class ZODBStore(Persistent, Store):
             ind_id = enctriple[p]
             s = index.get(ind_id, None)
             if s is None:
-                s = self.family.OO.Set((enctriple,))
-                index[ind_id] = s
-            s.add(enctriple)
+                index[ind_id] = self.family.OO.Set((enctriple,))
+            else:
+                s.add(enctriple)
 
     def add(self, triple, context, quoted=False):
         # oldlen = len(self)
@@ -145,6 +165,8 @@ class ZODBStore(Persistent, Store):
 
         enctriple = self.__encodeTriple(triple)
         sid, pid, oid = enctriple
+
+        self._add_indexed(enctriple)
 
         cid = self.__obj2id(context)
         self.__addTripleContext(enctriple, cid, quoted)
@@ -163,6 +185,15 @@ class ZODBStore(Persistent, Store):
             self.__objectIndex[oid].add(enctriple)
         else:
             self.__objectIndex[oid] = self.family.OO.Set((enctriple,))
+
+    def _add_indexed(self, enctriple):
+        sid, pid, oid = enctriple
+        if pid == self._rdf_type_id():
+            typs = self._rdf_type_index().get(sid, None)
+            if typs is None:
+                self._rdf_type_index()[sid] = self.family.II.Set((oid,))
+            else:
+                typs.add(oid)
 
     def __objsInRange(self, rng):
         return minmax(self.__obj2int.values(min=rng[0], max=rng[1]))
@@ -237,6 +268,14 @@ class ZODBStore(Persistent, Store):
             else:
                 return self.__emptygen()
 
+        if sid is not None and pid == self._rdf_type_id():
+            typs = self._rdf_type_index().get(sid, None)
+            if typs is not None:
+                return ((self.__decodeTriple(enctriple),
+                         self.__contexts(enctriple))
+                        for enctriple in ((sid, pid, t) for t in typs)
+                        if self.__tripleHasContext(enctriple, cid))
+
         # remaining cases: one or two out of three given
         sets = []
         if sid is not None:
@@ -269,8 +308,8 @@ class ZODBStore(Persistent, Store):
             return ((self.__decodeTriple(enctriple),
                      self.__contexts(enctriple))
                     for enctriple in enctriples
-                    if self.__tripleHasContext(enctriple, cid)
-                    and enctriple[2] > rng[0] and enctriple[2] < rng[1])
+                    if self.__tripleHasContext(enctriple, cid) and
+                    enctriple[2] > rng[0] and enctriple[2] < rng[1])
         else:
             return ((self.__decodeTriple(enctriple),
                      self.__contexts(enctriple))
