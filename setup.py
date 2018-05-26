@@ -46,16 +46,15 @@ def find_version(filename):
         if version_match:
             return version_match.group(1)
 
-__version__ = find_version('rdflib_zodb/__init__.py')
+__version__ = find_version('pow_zodb/__init__.py')
 
 config = dict(
-    name='rdflib-zodb',
+    name='pow-store-zodb',
     version=__version__,
-    description="rdflib extension adding ZODB as back-end store",
-    author="Graham Higgins",
-    author_email="gjhiggins@gmail.com",
-    url="http://github.com/RDFLib/rdflib-zodb",
-    #download_url="https://github.com/RDFLib/rdflib-zodb/zipball/master",
+    description="rdflib extension adding ZODB as back-end store. Forked from rdflib-zodb",
+    author="Mark Watts",
+    author_email="wattsmark2015@gmail.com",
+    url="http://github.com/mwatts/pow-store-zodb",
     license="BSD",
     platforms=["any"],
     long_description="""
@@ -65,23 +64,21 @@ config = dict(
     class, ZODBStore """,
     classifiers=["Programming Language :: Python",
                  "Programming Language :: Python :: 2",
-                 "Programming Language :: Python :: 2.6",
                  "Programming Language :: Python :: 2.7",
                  'Programming Language :: Python :: 3',
-                 'Programming Language :: Python :: 3.2',
-                 'Programming Language :: Python :: 3.3',
+                 'Programming Language :: Python :: 3.4',
                  'Programming Language :: Python :: Implementation :: PyPy',
                  "License :: OSI Approved :: BSD License",
                  "Topic :: Software Development :: Libraries :: Python Modules",
                  "Operating System :: OS Independent",
                  "Natural Language :: English",
                  ],
-    packages=["rdflib_zodb"],
+    packages=["pow_zodb"],
     test_suite="test",
     install_requires=["rdflib >= 4.1.0", "BTrees"],
     entry_points={
         'rdf.plugins.store': [
-            'ZODB = rdflib_zodb.ZODB:ZODBStore',
+            'ZODB = pow_zodb.ZODB:ZODBStore',
         ],
     }
 )

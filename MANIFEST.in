@@ -1,4 +1,4 @@
 include *.md
-recursive-include rdflib_zodb *.py
+recursive-include pow_zodb *.py
 include setup.*
 graft test
