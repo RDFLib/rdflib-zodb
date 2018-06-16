@@ -4,4 +4,4 @@ from rdflib import store
 # Support execution of nosetests without actual installation
 plugin.register(
         'ZODB', store.Store,
-        'rdflib_zodb.ZODB', 'ZODBStore')
+        'pow_zodb.ZODB', 'ZODBStore')

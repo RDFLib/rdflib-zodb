@@ -75,7 +75,7 @@ config = dict(
                  ],
     packages=["pow_zodb"],
     test_suite="test",
-    install_requires=["rdflib >= 4.1.0", "BTrees"],
+    install_requires=["rdflib >= 4.1.0", "BTrees", "transaction"],
     entry_points={
         'rdf.plugins.store': [
             'ZODB = pow_zodb.ZODB:ZODBStore',

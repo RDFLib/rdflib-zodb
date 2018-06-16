@@ -28,10 +28,11 @@ def grouper(iterable, n):
     "Collect data into chunks of at most n elements"
     i = 0
     lst = []
+    iterable = iter(iterable)
     while True:
         try:
             lst.append(next(iterable))
-        except Exception:
+        except StopIteration:
             break
 
         if i > 0 and i % n == 0:
@@ -125,6 +126,7 @@ class ZODBStore(Persistent, Store):
         transaction.begin()
 
     def addN(self, quads):
+        c1, c2, c3 = 0, 0, 0
         for qgroup in grouper(quads, 10000):
             encquads = list()
             for q in qgroup:
@@ -140,19 +142,24 @@ class ZODBStore(Persistent, Store):
                     self.__all_contexts.add(context)
                 self.__addTripleContext(enctriple, cid, False)
                 self._add_indexed(enctriple)
-
-            self._addN_helper(encquads, self.__subjectIndex, 0)
-            self._addN_helper(encquads, self.__predicateIndex, 1)
-            self._addN_helper(encquads, self.__objectIndex, 2)
+            c1 += self._addN_helper(encquads, self.__subjectIndex, 0)
+            c2 += self._addN_helper(encquads, self.__predicateIndex, 1)
+            c3 += self._addN_helper(encquads, self.__objectIndex, 2)
+        assert c1 == c2
+        assert c2 == c3
+        return c1
 
     def _addN_helper(self, encquads, index, p):
+        res = 0
         for enctriple, __, __ in encquads:
             ind_id = enctriple[p]
             s = index.get(ind_id, None)
             if s is None:
                 index[ind_id] = self.family.OO.Set((enctriple,))
+                res += 1
             else:
-                s.add(enctriple)
+                res += s.add(enctriple)
+        return res
 
     def add(self, triple, context, quoted=False):
         # oldlen = len(self)

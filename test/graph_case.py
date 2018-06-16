@@ -264,6 +264,40 @@ class GraphTestCase(unittest.TestCase):
 
         self.assertEquals((michel, likes, cheese) in g1, True)
 
+    def testAddNReturn(self):
+        store = self.graph.store
+        tarek = self.tarek
+        michel = self.michel
+        bob = self.bob
+        likes = self.likes
+        hates = self.hates
+        pizza = self.pizza
+
+        cnt = store.addN(((tarek, likes, pizza, self.graph),
+                          (bob, hates, michel, self.graph)))
+        self.assertEquals(cnt, 2)
+
+    def testAddNReturnExisting(self):
+        store = self.graph.store
+        michel = self.michel
+        bob = self.bob
+        hates = self.hates
+
+        store.add((bob, hates, michel), self.graph)
+        cnt = store.addN(((bob, hates, michel, self.graph),))
+        self.assertEquals(cnt, 0)
+
+    def testAddNReturnAfterRemove(self):
+        store = self.graph.store
+        michel = self.michel
+        bob = self.bob
+        hates = self.hates
+
+        store.add((bob, hates, michel), self.graph)
+        store.remove((bob, hates, michel))
+        cnt = store.addN(((bob, hates, michel, self.graph),))
+        self.assertEquals(cnt, 1)
+
 
 xmltestdoc = """<?xml version="1.0" encoding="UTF-8"?>
 <rdf:RDF
