@@ -246,7 +246,7 @@ class ZODBStore(Persistent, Store):
         if context is None:
             context = DEFAULT
 
-        cid = self.__obj2id(context, fail_if_not_found=True)
+        cid = self.__obj2id_finf(context)
         if cid is NO_ID:
             return self.__emptygen()
         if isinstance(triplein[2], tuple):
@@ -255,7 +255,7 @@ class ZODBStore(Persistent, Store):
                          None)
             rng = triplein[2]
         else:
-            enctriple = self.__encodeTriple(triplein, fail_if_not_found=True)
+            enctriple = self.__encodeTriple_finf(triplein)
 
         if NO_ID in enctriple:
             return self.__emptygen()
@@ -442,7 +442,12 @@ class ZODBStore(Persistent, Store):
         else:
             self.__tripleContexts[enctriple] = ctxs
 
-    def __obj2id(self, obj, fail_if_not_found=False):
+    def __obj2id_finf(self, obj):
+        if obj is None:
+            return None
+        return self.__obj2int.get(obj, NO_ID)
+
+    def __obj2id(self, obj):
         """encode object, storing it in the encoding map if necessary, and
            return the integer key.
 
@@ -455,17 +460,19 @@ class ZODBStore(Persistent, Store):
         if obj is None:
             return None
 
-        res = self.__obj2int.get(obj, NO_ID)
-        if res is NO_ID and not fail_if_not_found:
-            if not hasattr(self, '_v_next_id'):
-                self._v_next_id = randid()
-            new_id = self._v_next_id
-            while self.__int2obj.insert(new_id, obj) == 0:
-                new_id += randid()
-            self._v_next_id = new_id + 1
-            self.__obj2int[obj] = new_id
-            res = new_id
-        return res
+        o2i = self.__obj2int
+        nextid = o2i.get(obj, None)
+        if nextid is None:
+            try:
+                nextid = self._v_next_id
+            except AttributeError:
+                self._v_next_id = nextid = randid()
+
+            while self.__int2obj.insert(nextid, obj) == 0:
+                nextid += randid()
+            self._v_next_id = nextid + 1
+            o2i[obj] = nextid
+        return nextid
 
     def __makeSlices(self, items, thresh=100000, single_serving=False):
         if not single_serving:
@@ -516,11 +523,11 @@ class ZODBStore(Persistent, Store):
             return self.triples(triple, context)
         else:
             results = set()
-            aid = self.__obj2id(triple[aidx], fail_if_not_found=True)
+            aid = self.__obj2id_finf(triple[aidx])
             if aid is NO_ID:
                 return self.__emptygen()
 
-            bid = self.__obj2id(triple[bidx], fail_if_not_found=True)
+            bid = self.__obj2id_finf(triple[bidx])
 
             if bid is NO_ID:
                 return self.__emptygen()
@@ -533,7 +540,7 @@ class ZODBStore(Persistent, Store):
             # I'm assuming that a bad context is an outside occurance which is
             # why I don't check it earlier than recoving the IDs from the
             # target
-            cid = self.__obj2id(context, fail_if_not_found=True)
+            cid = self.__obj2id_finf(context)
             if cid is NO_ID:
                 return self.__emptygen()
 
@@ -619,13 +626,15 @@ class ZODBStore(Persistent, Store):
                     yield v
 
     def __id2obj(self, id):
-        if id is None:
-            return None
-        return self.__int2obj[id]
+        return self.__int2obj[id] if id is not None else None
 
-    def __encodeTriple(self, triple, fail_if_not_found=False):
+    def __encodeTriple_finf(self, triple):
+        """ encode a whole triple, returning the encoded triple. Returns NO_IDs if a triple isn't found """
+        return tuple(self.__obj2id_finf(s) for s in triple)
+
+    def __encodeTriple(self, triple):
         """encode a whole triple, returning the encoded triple"""
-        return tuple(self.__obj2id(s, fail_if_not_found) for s in triple)
+        return tuple(self.__obj2id(s) for s in triple)
 
     def __decodeTriple(self, enctriple):
         """decode a whole encoded triple, returning the original triple"""

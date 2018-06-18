@@ -10,11 +10,11 @@ _logger = logging.getLogger(__name__)
 
 import os
 from rdflib import RDF, URIRef, BNode, ConjunctiveGraph, Graph
-import graph_case
-import context_case
+from .graph_case import GraphTestCase
+from .context_case import ContextTestCase
 
 
-class ZODBGraphTestCase(graph_case.GraphTestCase):
+class ZODBGraphTestCase(GraphTestCase):
     store_name = "ZODB"
     storetest = True
     path = '/tmp/zodb_local2.fs'
@@ -248,7 +248,7 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
         self.assertEquals(s, graph.value(predicate=RDF.value, object=r))
 
 
-class ZODBContextTestCase(context_case.ContextTestCase):
+class ZODBContextTestCase(ContextTestCase):
     store_name = "ZODB"
     storetest = True
     path = '/tmp/zodb_local3.fs'
