@@ -2,11 +2,6 @@
 # -*- coding: utf-8 -*-
 import sys
 import re
-try:
-    import multiprocessing
-    assert multiprocessing
-except:
-    pass
 
 
 def setup_python3():
@@ -46,6 +41,7 @@ def find_version(filename):
         if version_match:
             return version_match.group(1)
 
+
 __version__ = find_version('pow_zodb/__init__.py')
 
 config = dict(
@@ -67,6 +63,7 @@ config = dict(
                  "Programming Language :: Python :: 2.7",
                  'Programming Language :: Python :: 3',
                  'Programming Language :: Python :: 3.4',
+                 'Programming Language :: Python :: 3.6',
                  'Programming Language :: Python :: Implementation :: PyPy',
                  "License :: OSI Approved :: BSD License",
                  "Topic :: Software Development :: Libraries :: Python Modules",
