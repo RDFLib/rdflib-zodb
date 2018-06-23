@@ -19,6 +19,19 @@ def find_version(filename):
             return version_match.group(1)
 
 
+def doc(s):
+    res = []
+    front = ''
+    for l in s.split('\n'):
+        if not front:
+            mo = re.match(r'\s+', l)
+            if mo:
+                front = mo.group(0)
+        l = l.replace(front, '', 1)
+        res.append(l)
+    return '\n'.join(res)
+
+
 __version__ = find_version('pow_zodb/__init__.py')
 
 PY2 = sys.version_info.major == 2
@@ -39,12 +52,12 @@ setup(
         'pytest-cov==2.5.1',
         'discover==0.4.0',
     ] + (['mock==2.0.0'] if PY2 else []),
-    long_description="""
+    long_description=doc("""
     ZOPE Object Database implementation of rdflib.store.Store.
 
-    This store has been adapted to use with PyOpenWorm, but it is acceptable
+    This store has been adapted for use with PyOpenWorm, but it is acceptable
     for general use.
-    """,
+    """),
     classifiers=["Programming Language :: Python",
                  "Programming Language :: Python :: 2",
                  "Programming Language :: Python :: 2.7",
