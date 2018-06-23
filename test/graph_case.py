@@ -11,13 +11,13 @@ class GraphTestCase(unittest.TestCase):
     path = None
     storetest = True
     create = True
-    michel = URIRef(u'michel')
-    tarek = URIRef(u'tarek')
-    bob = URIRef(u'bob')
-    likes = URIRef(u'likes')
-    hates = URIRef(u'hates')
-    pizza = URIRef(u'pizza')
-    cheese = URIRef(u'cheese')
+    michel = URIRef('michel')
+    tarek = URIRef('tarek')
+    bob = URIRef('bob')
+    likes = URIRef('likes')
+    hates = URIRef('hates')
+    pizza = URIRef('pizza')
+    cheese = URIRef('cheese')
 
     def setUp(self):
         self.graph = Graph(store=self.store_name)
@@ -94,7 +94,7 @@ class GraphTestCase(unittest.TestCase):
         hates = self.hates
         pizza = self.pizza
         cheese = self.cheese
-        asserte = self.assertEquals
+        asserte = self.assertEqual
         triples = self.graph.triples
         Any = None
 
@@ -145,20 +145,20 @@ class GraphTestCase(unittest.TestCase):
         r = URIRef("http://example.org/foo#r")
         s = Statement((self.michel, self.likes, self.pizza), c)
         graph.add((s, RDF.value, r))
-        self.assertEquals(r, graph.value(s, RDF.value))
-        self.assertEquals(s, graph.value(predicate=RDF.value, object=r))
+        self.assertEqual(r, graph.value(s, RDF.value))
+        self.assertEqual(s, graph.value(predicate=RDF.value, object=r))
 
     def testConnected(self):
         graph = self.graph
         self.addStuff()
-        self.assertEquals(True, graph.connected())
+        self.assertEqual(True, graph.connected())
 
         jeroen = URIRef("jeroen")
         unconnected = URIRef("unconnected")
 
         graph.add((jeroen, self.likes, unconnected))
 
-        self.assertEquals(False, graph.connected())
+        self.assertEqual(False, graph.connected())
 
     def testSub(self):
         g1 = Graph()
@@ -179,19 +179,19 @@ class GraphTestCase(unittest.TestCase):
 
         g3 = g1 - g2
 
-        self.assertEquals(len(g3), 1)
-        self.assertEquals((tarek, likes, pizza) in g3, True)
-        self.assertEquals((tarek, likes, cheese) in g3, False)
+        self.assertEqual(len(g3), 1)
+        self.assertEqual((tarek, likes, pizza) in g3, True)
+        self.assertEqual((tarek, likes, cheese) in g3, False)
 
-        self.assertEquals((bob, likes, cheese) in g3, False)
+        self.assertEqual((bob, likes, cheese) in g3, False)
 
         g1 -= g2
 
-        self.assertEquals(len(g1), 1)
-        self.assertEquals((tarek, likes, pizza) in g1, True)
-        self.assertEquals((tarek, likes, cheese) in g1, False)
+        self.assertEqual(len(g1), 1)
+        self.assertEqual((tarek, likes, pizza) in g1, True)
+        self.assertEqual((tarek, likes, cheese) in g1, False)
 
-        self.assertEquals((bob, likes, cheese) in g1, False)
+        self.assertEqual((bob, likes, cheese) in g1, False)
 
     def testGraphAdd(self):
         g1 = Graph()
@@ -211,19 +211,19 @@ class GraphTestCase(unittest.TestCase):
 
         g3 = g1 + g2
 
-        self.assertEquals(len(g3), 2)
-        self.assertEquals((tarek, likes, pizza) in g3, True)
-        self.assertEquals((tarek, likes, cheese) in g3, False)
+        self.assertEqual(len(g3), 2)
+        self.assertEqual((tarek, likes, pizza) in g3, True)
+        self.assertEqual((tarek, likes, cheese) in g3, False)
 
-        self.assertEquals((bob, likes, cheese) in g3, True)
+        self.assertEqual((bob, likes, cheese) in g3, True)
 
         g1 += g2
 
-        self.assertEquals(len(g1), 2)
-        self.assertEquals((tarek, likes, pizza) in g1, True)
-        self.assertEquals((tarek, likes, cheese) in g1, False)
+        self.assertEqual(len(g1), 2)
+        self.assertEqual((tarek, likes, pizza) in g1, True)
+        self.assertEqual((tarek, likes, cheese) in g1, False)
 
-        self.assertEquals((bob, likes, cheese) in g1, True)
+        self.assertEqual((bob, likes, cheese) in g1, True)
 
     def testGraphIntersection(self):
         g1 = Graph()
@@ -245,24 +245,24 @@ class GraphTestCase(unittest.TestCase):
 
         g3 = g1 * g2
 
-        self.assertEquals(len(g3), 1)
-        self.assertEquals((tarek, likes, pizza) in g3, False)
-        self.assertEquals((tarek, likes, cheese) in g3, False)
+        self.assertEqual(len(g3), 1)
+        self.assertEqual((tarek, likes, pizza) in g3, False)
+        self.assertEqual((tarek, likes, cheese) in g3, False)
 
-        self.assertEquals((bob, likes, cheese) in g3, False)
+        self.assertEqual((bob, likes, cheese) in g3, False)
 
-        self.assertEquals((michel, likes, cheese) in g3, True)
+        self.assertEqual((michel, likes, cheese) in g3, True)
 
         g1 *= g2
 
-        self.assertEquals(len(g1), 1)
+        self.assertEqual(len(g1), 1)
 
-        self.assertEquals((tarek, likes, pizza) in g1, False)
-        self.assertEquals((tarek, likes, cheese) in g1, False)
+        self.assertEqual((tarek, likes, pizza) in g1, False)
+        self.assertEqual((tarek, likes, cheese) in g1, False)
 
-        self.assertEquals((bob, likes, cheese) in g1, False)
+        self.assertEqual((bob, likes, cheese) in g1, False)
 
-        self.assertEquals((michel, likes, cheese) in g1, True)
+        self.assertEqual((michel, likes, cheese) in g1, True)
 
     def testAddNReturn(self):
         store = self.graph.store
@@ -275,7 +275,7 @@ class GraphTestCase(unittest.TestCase):
 
         cnt = store.addN(((tarek, likes, pizza, self.graph),
                           (bob, hates, michel, self.graph)))
-        self.assertEquals(cnt, 2)
+        self.assertEqual(cnt, 2)
 
     def testAddNReturnExisting(self):
         store = self.graph.store
@@ -285,7 +285,7 @@ class GraphTestCase(unittest.TestCase):
 
         store.add((bob, hates, michel), self.graph)
         cnt = store.addN(((bob, hates, michel, self.graph),))
-        self.assertEquals(cnt, 0)
+        self.assertEqual(cnt, 0)
 
     def testAddNReturnAfterRemove(self):
         store = self.graph.store
@@ -296,7 +296,7 @@ class GraphTestCase(unittest.TestCase):
         store.add((bob, hates, michel), self.graph)
         store.remove((bob, hates, michel))
         cnt = store.addN(((bob, hates, michel, self.graph),))
-        self.assertEquals(cnt, 1)
+        self.assertEqual(cnt, 1)
 
 
 xmltestdoc = """<?xml version="1.0" encoding="UTF-8"?>

@@ -3,33 +3,10 @@
 import sys
 import re
 
-
-def setup_python3():
-    # Taken from "distribute" setup.py
-    from distutils.filelist import FileList
-    from distutils import dir_util, file_util, util, log
-    from os.path import join
-
-    tmp_src = join("build", "src")
-    log.set_verbosity(1)
-    fl = FileList()
-    for line in open("MANIFEST.in"):
-        if not line.strip():
-            continue
-        fl.process_template_line(line)
-    dir_util.create_tree(tmp_src, fl.files)
-    outfiles_2to3 = []
-    for f in fl.files:
-        outf, copied = file_util.copy_file(f, join(tmp_src, f), update=1)
-        if copied and outf.endswith(".py"):
-            outfiles_2to3.append(outf)
-
-    util.run_2to3(outfiles_2to3)
-
-    # arrange setup to use the copy
-    sys.path.insert(0, tmp_src)
-
-    return tmp_src
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
 
 
 # Find version. We have to do this because we can't import it in Python 3 until
@@ -44,7 +21,10 @@ def find_version(filename):
 
 __version__ = find_version('pow_zodb/__init__.py')
 
-config = dict(
+PY2 = sys.version_info.major == 2
+
+
+setup(
     name='pow-store-zodb',
     version=__version__,
     description="rdflib extension adding ZODB as back-end store. Forked from rdflib-zodb",
@@ -53,6 +33,12 @@ config = dict(
     url="http://github.com/mwatts/pow-store-zodb",
     license="BSD",
     platforms=["any"],
+    tests_require=[
+        'tox',
+        'pytest>=3.4.0',
+        'pytest-cov==2.5.1',
+        'discover==0.4.0',
+    ] + (['mock==2.0.0'] if PY2 else []),
     long_description="""
     ZOPE Object Database implementation of rdflib.store.Store.
 
@@ -79,16 +65,3 @@ config = dict(
         ],
     }
 )
-
-if sys.version_info[0] >= 3:
-    from setuptools import setup
-    config.update({'use_2to3': True})
-    config.update({'src_root': setup_python3()})
-else:
-    try:
-        from setuptools import setup
-    except ImportError:
-        from distutils.core import setup
-
-
-setup(**config)

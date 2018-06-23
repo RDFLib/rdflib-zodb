@@ -15,7 +15,7 @@ import BTrees
 from BTrees.Length import Length
 
 ANY = Any = None
-DEFAULT = BNode(u'ZODBStore:DEFAULT')
+DEFAULT = BNode('ZODBStore:DEFAULT')
 L = logging.getLogger(__name__)
 # TODO:
 #   * is zope.intids id search faster? (maybe with large dataset and actual
@@ -114,7 +114,7 @@ class ZODBStore(Persistent, Store):
         return self.__prefix.get(namespace, None)
 
     def namespaces(self):
-        for prefix, namespace in self.__namespace.iteritems():
+        for prefix, namespace in self.__namespace.items():
             yield prefix, namespace
 
     def rollback(self):
@@ -422,13 +422,13 @@ class ZODBStore(Persistent, Store):
         ctxs = self.__tripleContexts.get(enctriple, self.__defaultContexts)
 
         if not skipQuoted:
-            return ctxs.keys()
+            return list(ctxs.keys())
 
-        return [cid for cid, quoted in ctxs.iteritems() if not quoted]
+        return [cid for cid, quoted in ctxs.items() if not quoted]
 
     def __getTripleContextsIter(self, enctriple):
         return (cid for cid, quoted
-                in self.__tripleContexts.get(enctriple, self.__defaultContexts).iteritems()
+                in self.__tripleContexts.get(enctriple, self.__defaultContexts).items()
                 if not quoted)
 
     def __tripleHasContext(self, enctriple, cid):
@@ -680,7 +680,7 @@ def minmax(data):
         lo = hi = next(it)
     except StopIteration:
         raise ValueError('minmax() arg is an empty sequence')
-    for x, y in itertools.izip_longest(it, it, fillvalue=lo):
+    for x, y in itertools.zip_longest(it, it, fillvalue=lo):
         if x > y:
             x, y = y, x
         if x < lo:

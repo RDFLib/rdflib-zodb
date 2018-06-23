@@ -8,12 +8,14 @@ from random import random
 from tempfile import mkdtemp
 from rdflib import Graph
 from rdflib import URIRef
+import pytest
 
 
 def random_uri():
     return URIRef("%s" % random())
 
 
+@pytest.mark.perf
 class StoreTestCase(unittest.TestCase):
 
     """

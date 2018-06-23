@@ -20,8 +20,13 @@ script:
 
 jobs:
     include:
-        - stage: py36
-          python:
+        - python:
+            - 2.7
+          script: tox -e py27
+        - python:
+            - 3.4
+          script: tox -e py34
+        - python:
             - 3.6
           script: tox -e py36
         - stage: coverage
