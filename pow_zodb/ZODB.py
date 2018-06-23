@@ -426,6 +426,11 @@ class ZODBStore(Persistent, Store):
 
         return [cid for cid, quoted in ctxs.iteritems() if not quoted]
 
+    def __getTripleContextsIter(self, enctriple):
+        return (cid for cid, quoted
+                in self.__tripleContexts.get(enctriple, self.__defaultContexts).iteritems()
+                if not quoted)
+
     def __tripleHasContext(self, enctriple, cid):
         """return True iff the triple exists in the given context"""
         ctxs = self.__tripleContexts.get(enctriple, self.__defaultContexts)
@@ -480,7 +485,7 @@ class ZODBStore(Persistent, Store):
             _min = items[0]
             _last = items[0]
             for cur in items:
-                if _last - cur > thresh:
+                if cur - _min > thresh:
                     yield (_min, _last)
                     _min = cur
                 _last = cur
@@ -610,6 +615,9 @@ class ZODBStore(Persistent, Store):
         else:
             return self.__emptygen()
 
+    def __multiple_id2obj(self, objs):
+        return (self.__int2obj[x] for x in objs)
+
     def __multiple_obj2id(self, objs):
         """ Note that the semantics are different from obj2id: If there are
         'misses' here, there won't be any updates. Also, there's no option
@@ -653,7 +661,7 @@ class ZODBStore(Persistent, Store):
         """return a generator for all the non-quoted contexts (unencoded)
            the encoded triple appears in"""
         return (self.__id2obj(cid) for cid
-                in self.__getTripleContexts(enctriple, skipQuoted=True)
+                in self.__getTripleContextsIter(enctriple)
                 if cid is not DEFAULT)
 
     def __emptygen(self):
