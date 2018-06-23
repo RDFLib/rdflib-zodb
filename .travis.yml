@@ -3,19 +3,16 @@ language: python
 python:
   - 2.7
 
-env:
-  - TOX_ENV=py27
-  - TOX_ENV=py34
-  - TOX_ENV=flake
-
-install:
-    - pip install --default-timeout 60 tox
-
-script:
-    - tox -e $TOX_ENV
+before_install:
+- pip install --default-timeout 60 tox
+# Travis-CI apparently has this built-in and no upgrade is done when our setup runs
+- pip install --upgrade pytest>=3.4.0 
 
 jobs:
     include:
+        - python:
+            - 3.4
+          script: tox -e flake
         - python:
             - 2.7
           script: tox -e py27
@@ -25,7 +22,10 @@ jobs:
         - python:
             - 3.6
           script: tox -e py36
+        - python:
+            - 3.6
+          script: tox -e perf
         - stage: coverage
-          install: pip install --quiet --default-timeout 60 coveralls tox
+          install: pip install --quiet --default-timeout 60 coveralls
           script: tox -e cover
           after_script: coveralls
