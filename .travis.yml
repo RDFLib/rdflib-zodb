@@ -5,7 +5,7 @@ branches:
     - master
 
 python:
-    - 2.7
+  - 2.7
 
 env:
   - TOX_ENV=py27
@@ -22,10 +22,9 @@ jobs:
     include:
         - stage: py36
           python:
-              - 3.6
+            - 3.6
           script: tox -e py36
         - stage: coverage
-          install: pip install --quiet coveralls
-          script: tox -e coverage
+          install: pip install --quiet --default-timeout 60 coveralls tox
+          script: tox -e cover
           after_script: coveralls
-            fi
