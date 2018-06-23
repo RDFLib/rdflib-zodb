@@ -30,7 +30,7 @@ setup(
     description="rdflib extension adding ZODB as back-end store. Forked from rdflib-zodb",
     author="Mark Watts",
     author_email="wattsmark2015@gmail.com",
-    url="http://github.com/mwatts/pow-store-zodb",
+    url="http://github.com/openworm/rdflib-zodb",
     license="BSD",
     platforms=["any"],
     tests_require=[
@@ -42,8 +42,9 @@ setup(
     long_description="""
     ZOPE Object Database implementation of rdflib.store.Store.
 
-    The boilerplate ZODB/ZEO handling has been wrapped up in a utility
-    class, ZODBStore """,
+    This store has been adapted to use with PyOpenWorm, but it is acceptable
+    for general use.
+    """,
     classifiers=["Programming Language :: Python",
                  "Programming Language :: Python :: 2",
                  "Programming Language :: Python :: 2.7",

@@ -9,8 +9,8 @@ incompatible with already persisted stores.
 
 (e.g. rdflib 3 and rdflib 4 stores are incompatible)
 
-[![Build Status](https://travis-ci.org/RDFLib/rdflib-zodb.png?branch=master)](https://travis-ci.org/RDFLib/rdflib-zodb)
-[![Coverage Status](https://coveralls.io/repos/RDFLib/rdflib-zodb/badge.png)](https://coveralls.io/r/RDFLib/rdflib-zodb)
-[![Latest Version](https://pypip.in/v/rdflib-zodb/badge.png)](https://pypi.python.org/pypi/rdflib-zodb/)
-[![Downloads](https://pypip.in/d/rdflib-zodb/badge.png)](https://pypi.python.org/pypi/rdflib-zodb/)
-[![License](https://pypip.in/license/rdflib-zodb/badge.png)](https://pypi.python.org/pypi/rdflib-zodb/)
+[![Build Status](https://travis-ci.org/openworm/rdflib-zodb.png?branch=master)](https://travis-ci.org/openworm/rdflib-zodb)
+[![Coverage Status](https://coveralls.io/repos/openworm/rdflib-zodb/badge.png)](https://coveralls.io/r/openworm/rdflib-zodb)
+[![Latest Version](https://pypip.in/v/pow-store-zodb/badge.png)](https://pypi.python.org/pypi/pow-store-zodb/)
+[![Downloads](https://pypip.in/d/pow-store-zodb/badge.png)](https://pypi.python.org/pypi/pow-store-zodb/)
+[![License](https://pypip.in/license/pow-store-zodb/badge.png)](https://pypi.python.org/pypi/pow-store-zodb/)
