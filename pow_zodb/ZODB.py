@@ -646,7 +646,7 @@ class ZODBStore(Persistent, Store):
 
     def __decodeTriple(self, enctriple):
         """decode a whole encoded triple, returning the original triple"""
-        return tuple(self.__id2obj(s) for s in enctriple)
+        return tuple(self.__int2obj[s] for s in enctriple)
 
     def __all_triples(self, cid):
         """return a generator which yields all the triples (unencoded) of
