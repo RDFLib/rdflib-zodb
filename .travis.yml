@@ -25,7 +25,6 @@ jobs:
         - python:
             - 3.6
           script: tox -e perf
-        - stage: coverage
-          install: pip install --quiet --default-timeout 60 coveralls
+        - install: pip install --quiet --default-timeout 60 coveralls
           script: tox -e cover
           after_script: coveralls
