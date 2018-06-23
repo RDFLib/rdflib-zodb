@@ -1,8 +1,4 @@
 language: python
-# whitelist
-branches:
-  only:
-    - master
 
 python:
   - 2.7
