@@ -10,9 +10,7 @@ python:
 env:
   - TOX_ENV=py27
   - TOX_ENV=py34
-  - TOX_ENV=py36
   - TOX_ENV=flake
-  - TOX_ENV=cover
 
 install:
     - pip install --default-timeout 60 tox
@@ -20,8 +18,14 @@ install:
 script:
     - tox -e $TOX_ENV
 
-after_script:
-  - if [ $TOX_ENV == "cover" ]; then
-    pip install --quiet coveralls;
-    coveralls;
-    fi
+jobs:
+    include:
+        - stage: py36
+          python:
+              - 3.6
+          script: tox -e py36
+        - stage: coverage
+          install: pip install --quiet coveralls
+          script: tox -e coverage
+          after_script: coveralls
+            fi
