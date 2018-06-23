@@ -22,9 +22,6 @@ jobs:
         - python:
             - 3.6
           script: tox -e py36
-        - python:
-            - 3.6
-          script: tox -e perf
         - install: pip install --quiet --default-timeout 60 coveralls
           script: tox -e cover
           after_script: coveralls
