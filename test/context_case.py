@@ -15,15 +15,15 @@ class ContextTestCase(unittest.TestCase):
     url = 'file:///tmp/zodb_local3.fs'
     storetest = True
     create = True
-    michel = URIRef(u'michel')
-    tarek = URIRef(u'tarek')
-    bob = URIRef(u'bob')
-    likes = URIRef(u'likes')
-    hates = URIRef(u'hates')
-    pizza = URIRef(u'pizza')
-    cheese = URIRef(u'cheese')
-    c1 = URIRef(u'context-1')
-    c2 = URIRef(u'context-2')
+    michel = URIRef('michel')
+    tarek = URIRef('tarek')
+    bob = URIRef('bob')
+    likes = URIRef('likes')
+    hates = URIRef('hates')
+    pizza = URIRef('pizza')
+    cheese = URIRef('cheese')
+    c1 = URIRef('context-1')
+    c2 = URIRef('context-2')
 
     def setUp(self):
         self.graph = ConjunctiveGraph(store=self.store_name)
@@ -117,7 +117,7 @@ class ContextTestCase(unittest.TestCase):
         # add to context 1
         graph = Graph(self.graph.store, self.c1)
         graph.add(triple)
-        self.assertEquals(len(self.graph), len(graph))
+        self.assertEqual(len(self.graph), len(graph))
 
     def testAdd(self):
         self.addStuff()
@@ -136,11 +136,11 @@ class ContextTestCase(unittest.TestCase):
 
         for i in range(0, 10):
             graph.add((BNode(), self.hates, self.hates))
-        self.assertEquals(len(graph), oldLen + 10)
-        self.assertEquals(len(self.get_context(c1)), oldLen + 10)
+        self.assertEqual(len(graph), oldLen + 10)
+        self.assertEqual(len(self.get_context(c1)), oldLen + 10)
         self.graph.remove_context(self.get_context(c1))
-        self.assertEquals(len(self.graph), oldLen)
-        self.assertEquals(len(graph), 0)
+        self.assertEqual(len(self.graph), oldLen)
+        self.assertEqual(len(graph), 0)
 
     def testLenInMultipleContexts(self):
         oldLen = len(self.graph)
@@ -148,10 +148,10 @@ class ContextTestCase(unittest.TestCase):
 
         # addStuffInMultipleContexts is adding the same triple to
         # three different contexts. So it's only + 1
-        self.assertEquals(len(self.graph), oldLen + 1)
+        self.assertEqual(len(self.graph), oldLen + 1)
 
         graph = Graph(self.graph.store, self.c1)
-        self.assertEquals(len(graph), oldLen + 1)
+        self.assertEqual(len(graph), oldLen + 1)
 
     def testRemoveInMultipleContexts(self):
         c1 = self.c1
@@ -161,21 +161,21 @@ class ContextTestCase(unittest.TestCase):
         self.addStuffInMultipleContexts()
 
         # triple should be still in store after removing it from c1 + c2
-        self.assert_(triple in self.graph)
+        self.assertTrue(triple in self.graph)
         graph = Graph(self.graph.store, c1)
         graph.remove(triple)
-        self.assert_(triple in self.graph)
+        self.assertTrue(triple in self.graph)
         graph = Graph(self.graph.store, c2)
         graph.remove(triple)
-        self.assert_(triple in self.graph)
+        self.assertTrue(triple in self.graph)
         self.graph.remove(triple)
         # now gone!
-        self.assert_(triple not in self.graph)
+        self.assertTrue(triple not in self.graph)
 
         # add again and see if remove without context removes all triples!
         self.addStuffInMultipleContexts()
         self.graph.remove(triple)
-        self.assert_(triple not in self.graph)
+        self.assertTrue(triple not in self.graph)
 
     def testContexts(self):
         triple = (self.pizza, self.hates, self.tarek)  # revenge!
@@ -183,31 +183,31 @@ class ContextTestCase(unittest.TestCase):
         self.addStuffInMultipleContexts()
 
         def cid(c):
-            if not isinstance(c, basestring):
+            if not isinstance(c, str):
                 return c.identifier
             return c
-        self.assert_(self.c1 in map(cid, self.graph.contexts()))
-        self.assert_(self.c2 in map(cid, self.graph.contexts()))
+        self.assertTrue(self.c1 in list(map(cid, self.graph.contexts())))
+        self.assertTrue(self.c2 in list(map(cid, self.graph.contexts())))
 
-        contextList = map(cid, list(self.graph.contexts(triple)))
-        self.assert_(self.c1 in contextList)
-        self.assert_(self.c2 in contextList)
+        contextList = list(map(cid, list(self.graph.contexts(triple))))
+        self.assertTrue(self.c1 in contextList)
+        self.assertTrue(self.c2 in contextList)
 
     def testRemoveContext(self):
         c1 = self.c1
 
         self.addStuffInMultipleContexts()
-        self.assertEquals(len(Graph(self.graph.store, c1)), 1)
-        self.assertEquals(len(self.get_context(c1)), 1)
+        self.assertEqual(len(Graph(self.graph.store, c1)), 1)
+        self.assertEqual(len(self.get_context(c1)), 1)
 
         self.graph.remove_context(self.get_context(c1))
-        self.assert_(self.c1 not in self.graph.contexts())
+        self.assertTrue(self.c1 not in self.graph.contexts())
 
     def testRemoveAny(self):
         Any = None
         self.addStuffInMultipleContexts()
         self.graph.remove((Any, Any, Any))
-        self.assertEquals(len(self.graph), 0)
+        self.assertEqual(len(self.graph), 0)
 
     def testTriples(self):
         tarek = self.tarek
@@ -218,7 +218,7 @@ class ContextTestCase(unittest.TestCase):
         pizza = self.pizza
         cheese = self.cheese
         c1 = self.c1
-        asserte = self.assertEquals
+        asserte = self.assertEqual
         triples = self.graph.triples
         graph = self.graph
         c1graph = Graph(self.graph.store, c1)

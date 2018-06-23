@@ -10,11 +10,11 @@ _logger = logging.getLogger(__name__)
 
 import os
 from rdflib import RDF, URIRef, BNode, ConjunctiveGraph, Graph
-import graph_case
-import context_case
+from .graph_case import GraphTestCase
+from .context_case import ContextTestCase
 
 
-class ZODBGraphTestCase(graph_case.GraphTestCase):
+class ZODBGraphTestCase(GraphTestCase):
     store_name = "ZODB"
     storetest = True
     path = '/tmp/zodb_local2.fs'
@@ -47,13 +47,13 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
     def setUp(self):
         # TODO: use DemoStorage for testing
         self.initConnection()
-        self.michel = URIRef(u'michel')
-        self.tarek = URIRef(u'tarek')
-        self.bob = URIRef(u'bob')
-        self.likes = URIRef(u'likes')
-        self.hates = URIRef(u'hates')
-        self.pizza = URIRef(u'pizza')
-        self.cheese = URIRef(u'cheese')
+        self.michel = URIRef('michel')
+        self.tarek = URIRef('tarek')
+        self.bob = URIRef('bob')
+        self.likes = URIRef('likes')
+        self.hates = URIRef('hates')
+        self.pizza = URIRef('pizza')
+        self.cheese = URIRef('cheese')
         transaction.begin()
 
     def tearDown(self):
@@ -123,7 +123,7 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
         hates = self.hates
         pizza = self.pizza
         cheese = self.cheese
-        asserte = self.assertEquals
+        asserte = self.assertEqual
         triples = self.graph.triples
         Any = None
 
@@ -166,6 +166,76 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
         self.removeStuff()
         asserte(len(list(triples((Any, Any, Any)))), 0)
 
+    def testTriplesChoicesNoList(self):
+        """
+        Based on other implementations, including the 'fallback' in rdflib, the
+        appropriate, if confusing, response in this case is to return nothing
+        """
+        self.addStuff()
+        self.assertEqual(
+            list(
+                self.graph.triples_choices(
+                    (self.tarek, self.likes, self.pizza))),
+            [],
+            'triples_choices without any lists should return nothing even if'
+            ' triples would return something for the same input')
+
+    def testTriplesChoicesSimple(self):
+        self.addStuff()
+        self.assertEqual(
+            set(self.graph.triples_choices(([self.tarek, self.michel],
+                                            self.likes,
+                                            self.pizza))),
+            set([(self.tarek, self.likes, self.pizza),
+                 (self.michel, self.likes, self.pizza)]))
+
+    def testTriplesChoicesRepeated(self):
+        """
+        Although the fallback implementation, would double the results,
+        I don't think there's any meaningful information in that, so we
+        don't bother
+        """
+        self.addStuff()
+        self.assertEqual(
+            list(self.graph.triples_choices(([self.tarek, self.tarek],
+                                             self.likes,
+                                             self.pizza))),
+            list([(self.tarek, self.likes, self.pizza)]))
+
+    def testTriplesChoicesEmptyList(self):
+        self.addStuff()
+        self.assertEqual(
+            set(self.graph.triples_choices(([],
+                                            self.likes,
+                                            self.pizza))),
+            set([(self.tarek, self.likes, self.pizza),
+                 (self.michel, self.likes, self.pizza)]))
+
+    def testTriplesChoicesNoneInList(self):
+        self.addStuff()
+        self.assertEqual(
+            set(self.graph.triples_choices(([None],
+                                            self.likes,
+                                            self.pizza))),
+            set([(self.tarek, self.likes, self.pizza),
+                 (self.michel, self.likes, self.pizza)]),
+            'a None in the list acts like just []')
+
+    def testTriplesChoicesDoubleNone(self):
+        """ Double the 'None' won't double the fun.
+
+        This is a slightly different test than testTriplesChoicesRepeated
+        because handling of multiple Nones is a little different internally
+        """
+        self.addStuff()
+        self.assertEqual(
+            sorted(self.graph.triples_choices(([None, None],
+                                            self.likes,
+                                            self.pizza))),
+            sorted([(self.michel, self.likes, self.pizza),
+                    (self.tarek, self.likes, self.pizza)]),
+            'a None in the list might as well not be there')
+
     def testStatementNode(self):
         graph = self.graph
 
@@ -174,11 +244,11 @@ class ZODBGraphTestCase(graph_case.GraphTestCase):
         r = URIRef("http://example.org/foo#r")
         s = Statement((self.michel, self.likes, self.pizza), c)
         graph.add((s, RDF.value, r))
-        self.assertEquals(r, graph.value(s, RDF.value))
-        self.assertEquals(s, graph.value(predicate=RDF.value, object=r))
+        self.assertEqual(r, graph.value(s, RDF.value))
+        self.assertEqual(s, graph.value(predicate=RDF.value, object=r))
 
 
-class ZODBContextTestCase(context_case.ContextTestCase):
+class ZODBContextTestCase(ContextTestCase):
     store_name = "ZODB"
     storetest = True
     path = '/tmp/zodb_local3.fs'
@@ -205,13 +275,13 @@ class ZODBContextTestCase(context_case.ContextTestCase):
             root['rdflib'] = ConjunctiveGraph(self.store_name)
         self.graph = self.g = root['rdflib']
 
-        self.michel = URIRef(u'michel')
-        self.tarek = URIRef(u'tarek')
-        self.bob = URIRef(u'bob')
-        self.likes = URIRef(u'likes')
-        self.hates = URIRef(u'hates')
-        self.pizza = URIRef(u'pizza')
-        self.cheese = URIRef(u'cheese')
+        self.michel = URIRef('michel')
+        self.tarek = URIRef('tarek')
+        self.bob = URIRef('bob')
+        self.likes = URIRef('likes')
+        self.hates = URIRef('hates')
+        self.pizza = URIRef('pizza')
+        self.cheese = URIRef('cheese')
         transaction.commit()
 
     def tearDown(self):
@@ -289,7 +359,7 @@ class ZODBContextTestCase(context_case.ContextTestCase):
         # add to context 1
         graph = Graph(self.graph.store, self.c1)
         graph.add(triple)
-        self.assertEquals(len(self.graph), len(graph))
+        self.assertEqual(len(self.graph), len(graph))
 
     def testAdd(self):
         self.addStuff()
@@ -308,11 +378,30 @@ class ZODBContextTestCase(context_case.ContextTestCase):
 
         for i in range(0, 10):
             graph.add((BNode(), self.hates, self.hates))
-        self.assertEquals(len(graph), oldLen + 10)
-        self.assertEquals(len(self.get_context(c1)), oldLen + 10)
+        self.assertEqual(len(graph), oldLen + 10)
+        self.assertEqual(len(self.get_context(c1)), oldLen + 10)
         self.graph.remove_context(self.get_context(c1))
-        self.assertEquals(len(self.graph), oldLen)
-        self.assertEquals(len(graph), 0)
+        self.assertEqual(len(self.graph), oldLen)
+        self.assertEqual(len(graph), 0)
+
+    def testLenInOneContext2(self):
+        c1 = self.c1
+        # make sure context is empty
+
+        self.graph.remove_context(self.get_context(c1))
+        graph = Graph(self.graph.store, c1)
+        oldLen = len(self.graph)
+
+        for i in range(0, 10):
+            graph.add((BNode(), self.hates, self.hates))
+        self.assertEqual(len(graph), oldLen + 10)
+        self.assertEqual(len(self.get_context(c1)), oldLen + 10)
+        for i, x in enumerate(graph.triples((None, None, None))):
+            if i >= 5:
+                break
+            self.graph.remove(x)
+        self.assertEqual(len(graph), 5)
+        self.assertEqual(len(self.graph), oldLen + 5)
 
     def testLenInMultipleContexts(self):
         oldLen = len(self.graph)
@@ -320,10 +409,10 @@ class ZODBContextTestCase(context_case.ContextTestCase):
 
         # addStuffInMultipleContexts is adding the same triple to
         # three different contexts. So it's only + 1
-        self.assertEquals(len(self.graph), oldLen + 1)
+        self.assertEqual(len(self.graph), oldLen + 1)
 
         graph = Graph(self.graph.store, self.c1)
-        self.assertEquals(len(graph), oldLen + 1)
+        self.assertEqual(len(graph), oldLen + 1)
 
     def testRemoveInMultipleContexts(self):
         c1 = self.c1
@@ -333,52 +422,52 @@ class ZODBContextTestCase(context_case.ContextTestCase):
         self.addStuffInMultipleContexts()
 
         # triple should be still in store after removing it from c1 + c2
-        self.assert_(triple in self.graph)
+        self.assertTrue(triple in self.graph)
         graph = Graph(self.graph.store, c1)
         graph.remove(triple)
-        self.assert_(triple in self.graph)
+        self.assertTrue(triple in self.graph)
         graph = Graph(self.graph.store, c2)
         graph.remove(triple)
-        self.assert_(triple in self.graph)
+        self.assertTrue(triple in self.graph)
         self.graph.remove(triple)
         # now gone!
-        self.assert_(triple not in self.graph)
+        self.assertTrue(triple not in self.graph)
 
         # add again and see if remove without context removes all triples!
         self.addStuffInMultipleContexts()
         self.graph.remove(triple)
-        self.assert_(triple not in self.graph)
+        self.assertTrue(triple not in self.graph)
 
     def testContexts(self):
         triple = (self.pizza, self.hates, self.tarek) # revenge!
 
         self.addStuffInMultipleContexts()
         def cid(c):
-            if not isinstance(c, basestring):
+            if not isinstance(c, str):
                 return c.identifier
             return c
-        self.assert_(self.c1 in map(cid, self.graph.contexts()))
-        self.assert_(self.c2 in map(cid, self.graph.contexts()))
+        self.assertTrue(self.c1 in list(map(cid, self.graph.contexts())))
+        self.assertTrue(self.c2 in list(map(cid, self.graph.contexts())))
 
-        contextList = map(cid, list(self.graph.contexts(triple)))
-        self.assert_(self.c1 in contextList)
-        self.assert_(self.c2 in contextList)
+        contextList = list(map(cid, list(self.graph.contexts(triple))))
+        self.assertTrue(self.c1 in contextList)
+        self.assertTrue(self.c2 in contextList)
 
     def testRemoveContext(self):
         c1 = self.c1
 
         self.addStuffInMultipleContexts()
-        self.assertEquals(len(Graph(self.graph.store, c1)), 1)
-        self.assertEquals(len(self.get_context(c1)), 1)
+        self.assertEqual(len(Graph(self.graph.store, c1)), 1)
+        self.assertEqual(len(self.get_context(c1)), 1)
 
         self.graph.remove_context(self.get_context(c1))
-        self.assert_(self.c1 not in self.graph.contexts())
+        self.assertTrue(self.c1 not in self.graph.contexts())
 
     def testRemoveAny(self):
         Any = None
         self.addStuffInMultipleContexts()
         self.graph.remove((Any, Any, Any))
-        self.assertEquals(len(self.graph), 0)
+        self.assertEqual(len(self.graph), 0)
 
     def testTriples(self):
         tarek = self.tarek
@@ -389,7 +478,7 @@ class ZODBContextTestCase(context_case.ContextTestCase):
         pizza = self.pizza
         cheese = self.cheese
         c1 = self.c1
-        asserte = self.assertEquals
+        asserte = self.assertEqual
         triples = self.graph.triples
         graph = self.graph
         c1graph = Graph(self.graph.store, c1)

@@ -1,6 +1,6 @@
-nose2
-nose2-cov>=1.0a
 flake8
 ZODB>=4.0.0a
 rdflib
 BTrees
+pytest>=3.4.0
+pytest-cov==2.5.1

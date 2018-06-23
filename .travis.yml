@@ -1,30 +1,27 @@
-# http://travis-ci.org/#!/RDFLib/rdflib_zodb
 language: python
-# whitelist
-branches:
-  only:
-    - master
 
 python:
-    - 2.7
+  - 2.7
 
-env:
-  - TOX_ENV=py26
-  - TOX_ENV=py27
-  - TOX_ENV=py32
-  - TOX_ENV=py33
-  - TOX_ENV=pypy
-  - TOX_ENV=flake
-  - TOX_ENV=cover
+before_install:
+- pip install --default-timeout 60 tox
+# Travis-CI apparently has this built-in and no upgrade is done when our setup runs
+- pip install --upgrade pytest>=3.4.0 
 
-install:
-    - pip install --default-timeout 60 tox
-
-script:
-    - tox -e $TOX_ENV
-
-after_script:
-  - if [ $TOX_ENV == "cover" ]; then
-    pip install --quiet coveralls;
-    coveralls;
-    fi
+jobs:
+    include:
+        - python:
+            - 3.4
+          script: tox -e flake
+        - python:
+            - 2.7
+          script: tox -e py27
+        - python:
+            - 3.4
+          script: tox -e py34
+        - python:
+            - 3.6
+          script: tox -e py36
+        - install: pip install --quiet --default-timeout 60 coveralls
+          script: tox -e cover
+          after_script: coveralls
