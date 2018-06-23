@@ -1,5 +1,4 @@
 nose2
-nose2-cov>=1.0a
 flake8
 ZODB>=4.0.0a
 rdflib
