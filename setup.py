@@ -51,6 +51,7 @@ setup(
         'pytest>=3.4.0',
         'pytest-cov==2.5.1',
         'discover==0.4.0',
+        'ZODB', # for testing ZODB integration
     ] + (['mock==2.0.0'] if PY2 else []),
     long_description=doc("""
     ZOPE Object Database implementation of rdflib.store.Store.
@@ -72,7 +73,7 @@ setup(
                  ],
     packages=["pow_zodb"],
     test_suite="test",
-    install_requires=["rdflib >= 4.1.0", "BTrees", 'ZODB>=5.4.0', "transaction"],
+    install_requires=["rdflib>=4.1.0", "BTrees", "transaction"],
     entry_points={
         'rdf.plugins.store': [
             'ZODB = pow_zodb.ZODB:ZODBStore',
