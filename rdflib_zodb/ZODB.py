@@ -1,18 +1,16 @@
 # Author: Michel Pelletier
-
-ANY = Any = None
-
-from rdflib.plugins.memory import randid
+# from rdflib.plugins.memory import randid
 from rdflib.store import Store
 from rdflib import BNode
-#import random
-
 from persistent import Persistent
 from persistent.dict import PersistentDict
 
 import BTrees
 # from BTrees.OO import intersection
 # from functools import reduce
+
+
+ANY = Any = None
 
 DEFAULT = BNode(u'ZODBStore:DEFAULT')
 
@@ -60,7 +58,7 @@ class ZODBStore(Persistent, Store):
         return self.__prefix.get(namespace, None)
 
     def namespaces(self):
-        for prefix, namespace in self.__namespace.iteritems():
+        for prefix, namespace in self.__namespace.items():
             yield prefix, namespace
 
     def add(self, triple, context, quoted=False):
@@ -177,7 +175,7 @@ class ZODBStore(Persistent, Store):
                 if self.__tripleHasContext(enctriple, cid))
 
     def contexts(self, triple=None):
-        if triple is None or triple is (None, None, None):
+        if triple is None or triple == (None, None, None):
             return (context for context in self.__all_contexts)
 
         enctriple = self.__encodeTriple(triple)
@@ -255,7 +253,7 @@ class ZODBStore(Persistent, Store):
         if not skipQuoted:
             return ctxs.keys()
 
-        return [cid for cid, quoted in ctxs.iteritems() if not quoted]
+        return [cid for cid, quoted in ctxs.items() if not quoted]
 
     def __tripleHasContext(self, enctriple, cid):
         """return True iff the triple exists in the given context"""
@@ -331,3 +329,12 @@ class ZODBStore(Persistent, Store):
         """return an empty generator"""
         if False:
             yield
+
+import random
+
+
+def randid(randint=random.randint, choice=random.choice, signs=(-1, 1)):
+    return choice(signs)*randint(1, 2000000000)
+
+
+del random

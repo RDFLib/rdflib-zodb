@@ -20,7 +20,7 @@ class StoreTestCase(unittest.TestCase):
     something other than a unit test... but for now we'll add it as a
     unit test.
     """
-    store = 'IOMemory'
+    store = 'Memory'
     path = None
     storetest = True
     performancetest = True
@@ -68,7 +68,7 @@ class StoreTestCase(unittest.TestCase):
             self.input = Graph()
             self.graph.remove((None, None, None))
             res = self._testInput(inputloc)
-            print "Loaded %5d triples in %ss" % (len(self.graph), res.strip())
+            print("Loaded %5d triples in %ss" % (len(self.graph), res.strip()))
         print("],")
         print('"Read %s": [' % self.store)
         t0 = time()
@@ -76,14 +76,14 @@ class StoreTestCase(unittest.TestCase):
             pass
         self.assertEqual(len(self.graph), 25161)
         t1 = time()
-        print "%.3gs" % (t1 - t0)
+        print("%.3gs" % (t1 - t0))
         print("],")
         print('"Delete %s": [' % self.store)
         t0 = time()
         self.graph.remove((None, None, None))
         self.assertEqual(len(self.graph), 0)
         t1 = time()
-        print "%.3g " % (t1 - t0)
+        print("%.3g " % (t1 - t0))
         print("],")
 
     def _testInput(self, inputloc):
@@ -110,6 +110,7 @@ class ZODBStoreTestCase(StoreTestCase):
         self.store = "ZODB"
         self.path = '/tmp/zodbtest'
         StoreTestCase.setUp(self)
+
 
 if __name__ == '__main__':
     unittest.main()
